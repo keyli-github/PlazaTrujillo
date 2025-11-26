@@ -1,5 +1,6 @@
 package com.keyli.plazatrujillo.ui.navigation
 
+import com.keyli.plazatrujillo.ui.screens.DashboardScreen
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,7 +22,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.keyli.plazatrujillo.R
 import com.keyli.plazatrujillo.ui.components.AppDrawer
-import com.keyli.plazatrujillo.ui.screens.DashboardScreen
 import com.keyli.plazatrujillo.ui.screens.LoginScreen
 import kotlinx.coroutines.launch
 

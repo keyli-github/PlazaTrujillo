@@ -1,3 +1,4 @@
+//DrawerContent.kt
 package com.keyli.plazatrujillo.ui.components
 
 import androidx.compose.foundation.Image

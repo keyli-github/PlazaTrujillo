@@ -1,3 +1,4 @@
+//Color.kt
 package com.keyli.plazatrujillo.ui.theme
 
 import androidx.compose.ui.graphics.Color
