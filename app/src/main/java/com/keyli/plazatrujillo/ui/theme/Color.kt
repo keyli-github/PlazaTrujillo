@@ -2,17 +2,24 @@ package com.keyli.plazatrujillo.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+// --- COLORES PRINCIPALES (NARANJA) ---
 val OrangePrimary = Color(0xFFFF5722)
 val OrangeSecondary = Color(0xFFFF8A65)
 
-// --- NUEVOS COLORES PARA TEMA CLARO ---
-val LightBackground = Color(0xFFF5F7FA) // Un gris muy suave, elegante para fondos
-val LightSurface = Color(0xFFFFFFFF)    // Blanco puro para las tarjetas
-val TextBlack = Color(0xFF212121)       // Negro suave para títulos
-val TextGray = Color(0xFF757575)        // Gris para subtítulos
+// --- COLORES PARA MODO CLARO (LIGHT) ---
+val LightBackground = Color(0xFFF5F7FA) // Gris suave
+val LightSurface = Color(0xFFFFFFFF)    // Blanco puro
+val TextBlack = Color(0xFF212121)       // Negro suave
+val TextGray = Color(0xFF757575)        // Gris texto secundario
 
-// Mantenemos los de estado (funcionan bien en blanco también)
-val StatusGreen = Color(0xFF4CAF50)
-val StatusRed = Color(0xFFF44336)
-val StatusBlue = Color(0xFF2196F3)
-val StatusPurple = Color(0xFF9C27B0)
+// --- COLORES PARA MODO OSCURO (DARK) ---
+// Estos son los que te faltaban y causaban el error rojo
+val DarkBackground = Color(0xFF121212)  // Negro profundo
+val DarkSurface = Color(0xFF1E1E1E)     // Gris oscuro para tarjetas
+val TextWhite = Color(0xFFFFFFFF)       // Texto blanco
+
+// --- COLORES DE ESTADO (SEMAFORO) ---
+val StatusGreen = Color(0xFF4CAF50)     // Éxito / Disponible
+val StatusRed = Color(0xFFF44336)       // Error / Ocupado / Gasto
+val StatusBlue = Color(0xFF2196F3)      // Info / Pendiente / Yape
+val StatusPurple = Color(0xFF9C27B0)    // Lavandería / Próximo

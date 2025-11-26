@@ -25,12 +25,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview // Importante para el preview
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.keyli.plazatrujillo.R
 import com.keyli.plazatrujillo.ui.theme.OrangePrimary
-import com.keyli.plazatrujillo.ui.theme.PlazaTrujilloTheme // Importa tu tema
+import com.keyli.plazatrujillo.ui.theme.PlazaTrujilloTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,7 +74,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 shadowElevation = 8.dp
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    // IMAGEN DEL LOGO (Requiere archivo 'logo' en res/drawable)
+                    // Si tienes el logo, usa esta línea:
                     Image(
                         painter = painterResource(id = R.drawable.logo),
                         contentDescription = "Logo Hotel",
@@ -252,13 +252,13 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
 }
 
 // ==========================================
-// PREVIEW DE ANDROID STUDIO
+// PREVIEW CORREGIDO
 // ==========================================
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun LoginScreenPreview() {
-    // Envolvemos en el tema para ver los colores correctos
-    PlazaTrujilloTheme {
+    // AHORA PASAMOS darkTheme = false
+    PlazaTrujilloTheme(darkTheme = false) {
         LoginScreen(onLoginSuccess = {})
     }
 }
