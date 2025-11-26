@@ -46,7 +46,7 @@ fun AppDrawer(
             // Si es negra, en modo oscuro no se verá.
             // Aquí asumimos que el logo funciona o usamos un tinte si es necesario.
             Image(
-                painter = painterResource(id = R.drawable.logo),
+                painter = painterResource(id = R.drawable.logohp),
                 contentDescription = "Logo Plaza Trujillo",
                 modifier = Modifier.size(120.dp)
             )
