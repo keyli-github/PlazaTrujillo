@@ -1,5 +1,6 @@
 package com.keyli.plazatrujillo.ui.screens
 
+import androidx.navigation.NavHostController
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -41,7 +42,7 @@ data class ChatMessage(val id: Int, val text: String, val isUser: Boolean)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatBotScreen() {
+fun ChatBotScreen(navController: NavHostController) {
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 

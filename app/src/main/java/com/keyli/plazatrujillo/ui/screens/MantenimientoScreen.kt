@@ -1,5 +1,6 @@
 package com.keyli.plazatrujillo.ui.screens
 
+import androidx.navigation.NavHostController
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,7 +61,7 @@ data class Incidencia(
 )
 
 @Composable
-fun MantenimientoScreen() {
+fun MantenimientoScreen(navController: NavHostController) {
     // Datos de ejemplo (reemplazar por ViewModel)
     val incidencias = remember {
         listOf(

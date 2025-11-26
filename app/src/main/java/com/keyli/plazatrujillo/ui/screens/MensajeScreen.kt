@@ -1,5 +1,6 @@
 package com.keyli.plazatrujillo.ui.screens
 
+import androidx.navigation.NavHostController
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -37,7 +38,7 @@ data class Contact(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MensajeScreen() {
+fun MensajeScreen(navController: NavHostController) {
     val sampleContacts = remember {
         mutableStateListOf(
             Contact(1, "María López", "Confirmado, gracias.", "Recepción", "Justo ahora", online = true),
