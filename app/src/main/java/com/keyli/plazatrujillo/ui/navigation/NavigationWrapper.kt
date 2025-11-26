@@ -1,6 +1,6 @@
 package com.keyli.plazatrujillo.ui.navigation
 
-import com.keyli.plazatrujillo.ui.screens.DashboardScreen
+import com.keyli.plazatrujillo.ui.screens.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,12 +22,12 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.keyli.plazatrujillo.R
 import com.keyli.plazatrujillo.ui.components.AppDrawer
-import com.keyli.plazatrujillo.ui.screens.LoginScreen
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NavigationWrapper() {
+
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -35,13 +35,10 @@ fun NavigationWrapper() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: "login"
 
-    // Lógica para saber si mostramos las barras
     val showBars = currentRoute != "login"
 
-    // 1. EL SCAFFOLD ES EL PADRE (Para que la TopBar esté siempre encima)
     Scaffold(
         topBar = {
-            // Solo mostramos la barra si no es Login
             if (showBars) {
                 CenterAlignedTopAppBar(
                     title = {
@@ -72,13 +69,12 @@ fun NavigationWrapper() {
         }
     ) { paddingValues ->
 
-        // 2. EL DRAWER ESTÁ DENTRO DEL CONTENIDO DEL SCAFFOLD
-        // Usamos 'modifier.padding(paddingValues)' para empujarlo debajo de la TopBar
         ModalNavigationDrawer(
             modifier = Modifier.padding(paddingValues),
             drawerState = drawerState,
-            gesturesEnabled = showBars, // Bloquea gestos en Login
-            scrimColor = Color.Black.copy(alpha = 0.5f), // Sombra oscura solo en el contenido
+            gesturesEnabled = showBars,
+            scrimColor = Color.Black.copy(alpha = 0.5f),
+
             drawerContent = {
                 if (showBars) {
                     AppDrawer(
@@ -89,18 +85,20 @@ fun NavigationWrapper() {
                                 launchSingleTop = true
                                 restoreState = true
                             }
+                            scope.launch { drawerState.close() }
                         },
                         onCloseDrawer = { scope.launch { drawerState.close() } }
                     )
                 }
             }
         ) {
-            // 3. CONTENIDO DE NAVEGACIÓN (NavHost)
+
             NavHost(
                 navController = navController,
-                startDestination = "login" // Arranca en Login
-                // Nota: Ya no ponemos padding aquí porque el Drawer ya lo tiene
+                startDestination = "login"
             ) {
+
+                // LOGIN
                 composable("login") {
                     LoginScreen(
                         onLoginSuccess = {
@@ -111,29 +109,16 @@ fun NavigationWrapper() {
                     )
                 }
 
+                //  PANTALLAS REALES
                 composable("dashboard") { DashboardScreen(navController) }
-
-                // Pantallas Placeholder
-                composable("usuarios") { ScreenPlaceholder("Usuarios") }
-                composable("reservas") { ScreenPlaceholder("Reservas") }
-                composable("caja") { ScreenPlaceholder("Caja") }
-                composable("lavanderia") { ScreenPlaceholder("Lavandería") }
-                composable("mantenimiento") { ScreenPlaceholder("Mantenimiento") }
-                composable("mensajes") { ScreenPlaceholder("Mensajes") }
-                composable("chatbot") { ScreenPlaceholder("ChatBot") }
+                composable("usuarios") { UsuarioScreen() }
+                composable("reservas") { ReservaScreen() }
+                composable("caja") { CajaScreen() }
+                composable("lavanderia") { LavanderiaScreen() }
+                composable("mantenimiento") { MantenimientoScreen() }
+                composable("mensajes") { MensajeScreen() }
+                composable("chatbot") { ChatBotScreen() }
             }
         }
-    }
-}
-
-@Composable
-fun ScreenPlaceholder(title: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp), // Un poco de margen interno
-        contentAlignment = Alignment.Center
-    ) {
-        Text(text = "Pantalla de $title", style = MaterialTheme.typography.headlineMedium)
     }
 }
