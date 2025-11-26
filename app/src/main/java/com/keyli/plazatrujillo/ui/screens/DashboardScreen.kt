@@ -1,3 +1,5 @@
+//DashboardScreen.kt
+
 package com.keyli.plazatrujillo.ui.screens
 
 import androidx.compose.foundation.Canvas

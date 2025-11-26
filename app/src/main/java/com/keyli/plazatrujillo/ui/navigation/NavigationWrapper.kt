@@ -23,15 +23,11 @@ import com.keyli.plazatrujillo.R
 import com.keyli.plazatrujillo.ui.components.AppDrawer
 import com.keyli.plazatrujillo.ui.screens.DashboardScreen
 import com.keyli.plazatrujillo.ui.screens.LoginScreen
-import com.keyli.plazatrujillo.ui.screens.ProfileScreen
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NavigationWrapper(
-    isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit
-) {
+fun NavigationWrapper() {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -39,17 +35,13 @@ fun NavigationWrapper(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: "login"
 
-    // --- CORRECCIÓN AQUÍ ---
-    // Ocultamos la barra y el menú si estamos en Login O en Perfil
-    val showBars = currentRoute != "login" && currentRoute != "profile"
+    // Lógica para saber si mostramos las barras
+    val showBars = currentRoute != "login"
 
-    // Colores dinámicos para la barra superior
-    val topBarContainerColor = if (isDarkTheme) Color(0xFF1E1E1E) else Color.White
-    val topBarContentColor = if (isDarkTheme) Color.White else Color.Black
-
+    // 1. EL SCAFFOLD ES EL PADRE (Para que la TopBar esté siempre encima)
     Scaffold(
         topBar = {
-            // Solo mostramos la barra principal si showBars es true
+            // Solo mostramos la barra si no es Login
             if (showBars) {
                 CenterAlignedTopAppBar(
                     title = {
@@ -61,35 +53,32 @@ fun NavigationWrapper(
                     },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(
-                                imageVector = Icons.Default.Menu,
-                                contentDescription = "Menú",
-                                tint = topBarContentColor
-                            )
+                            Icon(Icons.Default.Menu, contentDescription = "Menú")
                         }
                     },
                     actions = {
                         IconButton(onClick = { }) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "Opciones",
-                                tint = topBarContentColor
-                            )
+                            Icon(Icons.Default.MoreVert, contentDescription = "Opciones")
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = topBarContainerColor
+                        containerColor = Color.White,
+                        titleContentColor = Color.Black,
+                        navigationIconContentColor = Color.Black,
+                        actionIconContentColor = Color.Black
                     )
                 )
             }
         }
     ) { paddingValues ->
 
+        // 2. EL DRAWER ESTÁ DENTRO DEL CONTENIDO DEL SCAFFOLD
+        // Usamos 'modifier.padding(paddingValues)' para empujarlo debajo de la TopBar
         ModalNavigationDrawer(
             modifier = Modifier.padding(paddingValues),
             drawerState = drawerState,
-            gesturesEnabled = showBars, // Bloquea el deslizar en Login y Perfil
-            scrimColor = Color.Black.copy(alpha = 0.5f),
+            gesturesEnabled = showBars, // Bloquea gestos en Login
+            scrimColor = Color.Black.copy(alpha = 0.5f), // Sombra oscura solo en el contenido
             drawerContent = {
                 if (showBars) {
                     AppDrawer(
@@ -106,10 +95,11 @@ fun NavigationWrapper(
                 }
             }
         ) {
-            // CONTENIDO DE NAVEGACIÓN
+            // 3. CONTENIDO DE NAVEGACIÓN (NavHost)
             NavHost(
                 navController = navController,
-                startDestination = "login"
+                startDestination = "login" // Arranca en Login
+                // Nota: Ya no ponemos padding aquí porque el Drawer ya lo tiene
             ) {
                 composable("login") {
                     LoginScreen(
@@ -121,20 +111,9 @@ fun NavigationWrapper(
                     )
                 }
 
-                composable("dashboard") {
-                    DashboardScreen(
-                        navController = navController,
-                        isDarkTheme = isDarkTheme,
-                        onToggleTheme = onToggleTheme
-                    )
-                }
+                composable("dashboard") { DashboardScreen(navController) }
 
-                // Pantalla de Perfil (Ahora ocupará toda la pantalla limpia)
-                composable("profile") {
-                    ProfileScreen(navController = navController)
-                }
-
-                // Placeholders
+                // Pantallas Placeholder
                 composable("usuarios") { ScreenPlaceholder("Usuarios") }
                 composable("reservas") { ScreenPlaceholder("Reservas") }
                 composable("caja") { ScreenPlaceholder("Caja") }
@@ -152,7 +131,7 @@ fun ScreenPlaceholder(title: String) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(16.dp), // Un poco de margen interno
         contentAlignment = Alignment.Center
     ) {
         Text(text = "Pantalla de $title", style = MaterialTheme.typography.headlineMedium)
