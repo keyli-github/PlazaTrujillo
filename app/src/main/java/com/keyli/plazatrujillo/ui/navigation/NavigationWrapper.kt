@@ -32,74 +32,78 @@ fun NavigationWrapper() {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    // Detectamos en qué pantalla estamos
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: "login"
 
-    // Lógica para saber si mostramos el menú y la barra
+    // Lógica para saber si mostramos las barras
     val showBars = currentRoute != "login"
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        gesturesEnabled = showBars, // Bloquea el deslizar para abrir menú en el Login
-        drawerContent = {
-            // Solo renderizamos el contenido del menú si no estamos en login
+    // 1. EL SCAFFOLD ES EL PADRE (Para que la TopBar esté siempre encima)
+    Scaffold(
+        topBar = {
+            // Solo mostramos la barra si no es Login
             if (showBars) {
-                AppDrawer(
-                    currentRoute = currentRoute,
-                    onNavigate = { route ->
-                        navController.navigate(route) {
-                            popUpTo("dashboard") { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
+                CenterAlignedTopAppBar(
+                    title = {
+                        Image(
+                            painter = painterResource(id = R.drawable.logo),
+                            contentDescription = "Logo",
+                            modifier = Modifier.height(40.dp)
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            Icon(Icons.Default.Menu, contentDescription = "Menú")
                         }
                     },
-                    onCloseDrawer = { scope.launch { drawerState.close() } }
+                    actions = {
+                        IconButton(onClick = { }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Opciones")
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = Color.White,
+                        titleContentColor = Color.Black,
+                        navigationIconContentColor = Color.Black,
+                        actionIconContentColor = Color.Black
+                    )
                 )
             }
         }
-    ) {
-        Scaffold(
-            topBar = {
-                // Solo mostramos la barra superior si NO estamos en Login
+    ) { paddingValues ->
+
+        // 2. EL DRAWER ESTÁ DENTRO DEL CONTENIDO DEL SCAFFOLD
+        // Usamos 'modifier.padding(paddingValues)' para empujarlo debajo de la TopBar
+        ModalNavigationDrawer(
+            modifier = Modifier.padding(paddingValues),
+            drawerState = drawerState,
+            gesturesEnabled = showBars, // Bloquea gestos en Login
+            scrimColor = Color.Black.copy(alpha = 0.5f), // Sombra oscura solo en el contenido
+            drawerContent = {
                 if (showBars) {
-                    CenterAlignedTopAppBar(
-                        title = {
-                            // Asegúrate de tener logo en res/drawable
-                            Image(
-                                painter = painterResource(id = R.drawable.logo),
-                                contentDescription = "Logo",
-                                modifier = Modifier.height(40.dp)
-                            )
-                        },
-                        navigationIcon = {
-                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                Icon(Icons.Default.Menu, contentDescription = "Menú")
+                    AppDrawer(
+                        currentRoute = currentRoute,
+                        onNavigate = { route ->
+                            navController.navigate(route) {
+                                popUpTo("dashboard") { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
                             }
                         },
-                        actions = {
-                            IconButton(onClick = { }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "Opciones")
-                            }
-                        },
-                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                            containerColor = Color.White
-                        )
+                        onCloseDrawer = { scope.launch { drawerState.close() } }
                     )
                 }
             }
-        ) { paddingValues ->
-            // AQUÍ ESTÁ LA MAGIA: El NavHost contiene TODO, incluido el Login
+        ) {
+            // 3. CONTENIDO DE NAVEGACIÓN (NavHost)
             NavHost(
                 navController = navController,
-                startDestination = "login", // Arrancamos en Login
-                modifier = Modifier.padding(paddingValues)
+                startDestination = "login" // Arranca en Login
+                // Nota: Ya no ponemos padding aquí porque el Drawer ya lo tiene
             ) {
-                // Pantalla de Login
                 composable("login") {
                     LoginScreen(
                         onLoginSuccess = {
-                            // Al loguearse, vamos al dashboard y borramos el login del historial
                             navController.navigate("dashboard") {
                                 popUpTo("login") { inclusive = true }
                             }
@@ -107,12 +111,9 @@ fun NavigationWrapper() {
                     )
                 }
 
-                // Pantalla Dashboard
-                composable("dashboard") {
-                    DashboardScreen(navController)
-                }
+                composable("dashboard") { DashboardScreen(navController) }
 
-                // Resto de pantallas (Placeholders)
+                // Pantallas Placeholder
                 composable("usuarios") { ScreenPlaceholder("Usuarios") }
                 composable("reservas") { ScreenPlaceholder("Reservas") }
                 composable("caja") { ScreenPlaceholder("Caja") }
@@ -127,7 +128,12 @@ fun NavigationWrapper() {
 
 @Composable
 fun ScreenPlaceholder(title: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp), // Un poco de margen interno
+        contentAlignment = Alignment.Center
+    ) {
         Text(text = "Pantalla de $title", style = MaterialTheme.typography.headlineMedium)
     }
 }
