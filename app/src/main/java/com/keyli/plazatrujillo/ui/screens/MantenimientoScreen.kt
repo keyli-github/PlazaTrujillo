@@ -1,324 +1,419 @@
 package com.keyli.plazatrujillo.ui.screens
 
-import androidx.navigation.NavHostController
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.widthIn as _widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DateRange // Usado como alternativa a calculadora
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import com.keyli.plazatrujillo.ui.theme.LightBackground
-import com.keyli.plazatrujillo.ui.theme.LightSurface
-import com.keyli.plazatrujillo.ui.theme.OrangePrimary
-import com.keyli.plazatrujillo.ui.theme.OrangeSecondary
-import com.keyli.plazatrujillo.ui.theme.StatusGreen
-import com.keyli.plazatrujillo.ui.theme.StatusRed
-import com.keyli.plazatrujillo.ui.theme.TextBlack
-import com.keyli.plazatrujillo.ui.theme.TextGray
+import androidx.navigation.NavHostController
 
-data class Incidencia(
-    val area: String,
-    val detalle: String,
-    val prioridad: String,
-    val hora: String,
-    val estado: String,
-    val estadoColor: Color,
-    val prioridadColor: Color
-)
+// --- COLORES DEFINIDOS LOCALMENTE ---
+val LightBackground = Color(0xFFF8F9FA)
+val LightSurface = Color(0xFFFFFFFF)
+val TextBlack = Color(0xFF1F2937)
+val TextGray = Color(0xFF6B7280)
+val OrangePrimary = Color(0xFFFF6B00)
+val OrangeSecondary = Color(0xFFFFA04D)
+val StatusGreen = Color(0xFF10B981)
+val StatusRed = Color(0xFFEF4444)
 
 @Composable
 fun MantenimientoScreen(navController: NavHostController) {
-    // Datos de ejemplo (reemplazar por ViewModel)
-    val incidencias = remember {
-        listOf(
-            Incidencia(
-                "205",
-                "Aire acondicionado no enfría correctamente en la habitación 205",
-                "Prioridad Alta",
-                "Hoy, 10:30",
-                "Pendiente",
-                StatusRed.copy(alpha = 0.12f),
-                StatusRed
-            ),
-            Incidencia(
-                "104",
-                "Foco del baño fundido",
-                "Prioridad Baja",
-                "Hoy, 09:15",
-                "En Progreso",
-                OrangeSecondary.copy(alpha = 0.12f),
-                StatusGreen
-            ),
-            Incidencia(
-                "301",
-                "TV sin señal en la habitación",
-                "Prioridad Media",
-                "Ayer, 18:20",
-                "Pendiente",
-                StatusRed.copy(alpha = 0.12f),
-                OrangeSecondary
-            ),
-            Incidencia(
-                "Lobby",
-                "Puerta principal atascada al abrir",
-                "Prioridad Alta",
-                "Ayer, 14:00",
-                "En Progreso",
-                OrangeSecondary.copy(alpha = 0.12f),
-                StatusRed
-            )
-        )
-    }
+    // Estado para controlar la pestaña seleccionada
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    val tabs = listOf("Sistema Agua Caliente", "Historial Briquetas", "Incidencias", "Habitaciones Bloqueadas")
 
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = LightBackground
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 18.dp),
-            verticalArrangement = Arrangement.Top
+            modifier = Modifier.fillMaxSize()
         ) {
-            // TITULO
-            Text(
-                text = "Mantenimiento",
-                color = TextBlack,
-                fontSize = 26.sp,
-                fontWeight = FontWeight.ExtraBold,
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
-
-            Text(
-                text = "Gestión de reparaciones e infraestructura",
-                color = TextGray,
-                fontSize = 14.sp,
-                modifier = Modifier.padding(bottom = 14.dp)
-            )
-
-            // BOTON REPORTAR
-            Button(
-                onClick = { /* navegar a reporte */ },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "Reportar", tint = Color.White, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(text = "Reportar Incidencia", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            // --- HEADER ---
+            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 8.dp)) {
+                Text(
+                    text = "Mantenimiento Técnico",
+                    color = TextBlack,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Text(
+                    text = "Gestión del sistema de agua caliente y mantenimiento de habitaciones",
+                    color = TextGray,
+                    fontSize = 14.sp
+                )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // TARJETAS RESUMEN: calculamos ancho disponible y fijamos anchos iguales sin usar Modifier.weight
-            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                val totalSpacing = 12.dp * 2 // dos espacios entre 3 tarjetas
-                val cardWidth = (maxWidth - totalSpacing) / 3
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    SummaryCard(number = "3", label = "Pendientes", tint = StatusRed, modifier = Modifier.width(cardWidth))
-                    SummaryCard(number = "2", label = "En Proceso", tint = OrangeSecondary, modifier = Modifier.width(cardWidth))
-                    SummaryCard(number = "15", label = "Resueltos", tint = StatusGreen, modifier = Modifier.width(cardWidth))
+            // --- TABS ---
+            ScrollableTabRow(
+                selectedTabIndex = selectedTabIndex,
+                containerColor = LightBackground,
+                contentColor = OrangePrimary,
+                edgePadding = 16.dp,
+                indicator = { tabPositions ->
+                    if (selectedTabIndex < tabPositions.size) {
+                        TabRowDefaults.Indicator(
+                            Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
+                            color = OrangePrimary,
+                            height = 3.dp
+                        )
+                    }
+                },
+                divider = { Divider(color = TextGray.copy(alpha = 0.1f)) }
+            ) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        text = {
+                            Text(
+                                text = title,
+                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
+                                color = if (selectedTabIndex == index) OrangePrimary else TextGray
+                            )
+                        }
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(18.dp))
-
-            // INCIDENCIAS RECIENTES - Card que ocupa aproximadamente el 60% de la altura disponible
-            Card(
+            // --- CONTENIDO ---
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.60f),
-                shape = RoundedCornerShape(14.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    .fillMaxSize()
+                    .padding(16.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(LightSurface)
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = "Incidencias Recientes",
-                        color = TextBlack,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "Reportes de averías y solicitudes técnicas",
-                        color = TextGray,
-                        fontSize = 13.sp
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Divider(color = TextGray.copy(alpha = 0.12f), thickness = 1.dp)
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Lista: altura flexible dentro de la card (usa LazyColumn con heightIn para evitar weights)
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 120.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        items(incidencias) { item ->
-                            IncidenciaRow(incidencia = item)
-                            Divider(color = TextGray.copy(alpha = 0.08f), thickness = 1.dp)
-                        }
-                    }
+                when (selectedTabIndex) {
+                    0 -> TabAguaCaliente(navController)
+                    1 -> TabHistorialBriquetas()
+                    2 -> TabIncidencias()
+                    3 -> TabHabitacionesBloqueadas()
                 }
             }
         }
     }
 }
 
+// ------------------------------------------------------------------------
+// TAB 1: SISTEMA AGUA CALIENTE (DISEÑO CUADRÍCULA 2x2)
+// ------------------------------------------------------------------------
 @Composable
-private fun SummaryCard(number: String, label: String, tint: Color, modifier: Modifier = Modifier) {
+fun TabAguaCaliente(navController: NavHostController) {
+    Column(modifier = Modifier.fillMaxSize()) {
+
+        // --- FILA 1 (Verde y Naranja) ---
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Tarjeta 1: Estado (Verde)
+            StatusCard(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.CheckCircle,
+                iconBgColor = Color(0xFFDCFCE7), // Verde pastel
+                iconColor = Color(0xFF16A34A),   // Verde fuerte
+                title = "Estado Operativo",
+                value = "Operativo"
+            )
+
+            // Tarjeta 2: Briquetas (Naranja)
+            StatusCard(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.DateRange, // Icono calendario/calculadora
+                iconBgColor = Color(0xFFFFEDD5), // Naranja pastel
+                iconColor = Color(0xFFEA580C),   // Naranja fuerte
+                title = "Briquetas Este Mes",
+                value = "0 Unid."
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // --- FILA 2 (Azul y Morado) ---
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Tarjeta 3: Último Cambio (Azul)
+            StatusCard(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.AccessTime,
+                iconBgColor = Color(0xFFDBEAFE), // Azul pastel
+                iconColor = Color(0xFF2563EB),   // Azul fuerte
+                title = "Último Cambio",
+                value = "No registrado"
+            )
+
+            // Tarjeta 4: Próximo Cambio (Morado)
+            StatusCard(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.Schedule,
+                iconBgColor = Color(0xFFF3E8FF), // Morado pastel
+                iconColor = Color(0xFF9333EA),   // Morado fuerte
+                title = "Próximo Cambio",
+                value = "No programado"
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // --- BOTONES DE ACCIÓN ---
+        Text(text = "Acciones Rápidas", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextBlack)
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = { navController.navigate("register_briquetas") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = Color.White)
+            Spacer(Modifier.width(8.dp))
+            Text("Registrar Cambio Briquetas", fontSize = 16.sp)
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Button(
+                onClick = { navController.navigate("bloq_habitacion") },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF475569)),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text("Bloquear Hab.", fontSize = 14.sp)
+            }
+
+            Button(
+                onClick = { navController.navigate("report_incidencias") },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = StatusRed),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text("Reportar Incidencia", fontSize = 12.sp)
+            }
+        }
+    }
+}
+
+// ------------------------------------------------------------------------
+// STATUS CARD (COMPONENTE REUTILIZABLE CON ESTILO PROFESIONAL)
+// ------------------------------------------------------------------------
+@Composable
+fun StatusCard(
+    modifier: Modifier = Modifier,
+    icon: ImageVector,
+    iconBgColor: Color, // Color de fondo pastel
+    iconColor: Color,   // Color fuerte del icono
+    title: String,
+    value: String
+) {
     Card(
-        modifier = modifier
-            .heightIn(min = 88.dp)
-            .clip(RoundedCornerShape(12.dp)),
+        modifier = modifier.height(145.dp), // Altura fija uniforme
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp)
+        colors = CardDefaults.cardColors(containerColor = LightSurface),
+        border = BorderStroke(1.dp, TextGray.copy(alpha = 0.15f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .background(LightSurface)
-                .padding(vertical = 12.dp, horizontal = 12.dp),
+                .padding(16.dp)
+                .fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween,
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.Start // Alineado a la izquierda
         ) {
-            // Icon placeholder con espacio suficiente
+            // Icono con fondo cuadrado redondeado (Pastel)
             Box(
                 modifier = Modifier
-                    .size(28.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(tint.copy(alpha = 0.12f))
-            )
+                    .size(42.dp)
+                    .background(iconBgColor, RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
 
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Text(text = number, color = TextBlack, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = label, color = TextGray, fontSize = 13.sp)
+            // Textos
+            Column {
+                Text(
+                    text = title,
+                    fontSize = 13.sp,
+                    color = TextGray,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = value,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF111827), // Negro oscuro
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
 
+// ------------------------------------------------------------------------
+// TAB 2: HISTORIAL BRIQUETAS (TABLA)
+// ------------------------------------------------------------------------
 @Composable
-private fun IncidenciaRow(incidencia: Incidencia) {
-    // Evitamos Modifier.weight por problemas de versión/import. Calculamos el ancho disponible y asignamos
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-        val statusMinWidth = 84.dp
-        val spacing = 12.dp
-        val mainWidth = maxWidth - statusMinWidth - spacing
+fun TabHistorialBriquetas() {
+    val headers = listOf("Fecha" to 0.4f, "Hora" to 0.3f, "Cantidad" to 0.3f)
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(
-                modifier = Modifier
-                    .width(mainWidth)
-                    .padding(end = 8.dp)
-            ) {
-                Text(
-                    text = incidencia.area,
-                    color = TextBlack,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+    Column(modifier = Modifier.fillMaxSize()) {
+        TableHeader(headers)
+        EmptyStateMessage("No hay historial de cambios de briquetas")
+    }
+}
 
-                Spacer(modifier = Modifier.height(6.dp))
+// ------------------------------------------------------------------------
+// TAB 3: INCIDENCIAS (TABLA)
+// ------------------------------------------------------------------------
+@Composable
+fun TabIncidencias() {
+    val headers = listOf(
+        "Hab." to 0.15f,
+        "Problema" to 0.4f,
+        "Prio." to 0.2f,
+        "Fecha" to 0.25f
+    )
 
-                Text(
-                    text = incidencia.detalle,
-                    color = TextBlack,
-                    fontSize = 14.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(end = 4.dp)
-                )
+    Column(modifier = Modifier.fillMaxSize()) {
+        TableHeader(headers)
+        EmptyStateMessage("No hay incidencias registradas")
+    }
+}
 
-                Spacer(modifier = Modifier.height(8.dp))
+// ------------------------------------------------------------------------
+// TAB 4: HABITACIONES BLOQUEADAS (TABLA)
+// ------------------------------------------------------------------------
+@Composable
+fun TabHabitacionesBloqueadas() {
+    val headers = listOf(
+        "Hab." to 0.15f,
+        "Razón Bloqueo" to 0.35f,
+        "Hasta" to 0.25f,
+        "Por" to 0.25f
+    )
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = incidencia.hora, color = TextGray, fontSize = 12.sp)
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(text = incidencia.prioridad, color = incidencia.prioridadColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                }
-            }
+    Column(modifier = Modifier.fillMaxSize()) {
+        TableHeader(headers)
+        EmptyStateMessage("No hay habitaciones bloqueadas")
+    }
+}
 
-            // Estado: ancho mínimo fijado para que no comprima el texto principal
-            Box(
-                modifier = Modifier
-                    .widthIn(min = statusMinWidth)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(incidencia.estadoColor)
-                    .padding(horizontal = 10.dp, vertical = 8.dp)
-            ) {
-                // Alineamos el texto manualmente dentro del Box usando Modifier.align
-                Text(
-                    text = incidencia.estado,
-                    color = when (incidencia.estado) {
-                        "Pendiente" -> StatusRed
-                        "En Progreso" -> OrangeSecondary
-                        "Resuelto" -> StatusGreen
-                        else -> TextBlack
-                    },
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 13.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.align(Alignment.CenterStart)
-                )
-            }
+// ------------------------------------------------------------------------
+// COMPONENTES AUXILIARES
+// ------------------------------------------------------------------------
+
+@Composable
+fun TableHeader(headers: List<Pair<String, Float>>) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(LightSurface)
+            .padding(vertical = 12.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        headers.forEach { (title, weight) ->
+            Text(
+                text = title,
+                modifier = Modifier.weight(weight),
+                color = TextGray,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
+    }
+    Divider(color = TextGray.copy(alpha = 0.1f))
+}
+
+@Composable
+fun EmptyStateMessage(message: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 60.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = message,
+            color = TextGray,
+            fontSize = 14.sp,
+            textAlign = TextAlign.Center
+        )
     }
 }

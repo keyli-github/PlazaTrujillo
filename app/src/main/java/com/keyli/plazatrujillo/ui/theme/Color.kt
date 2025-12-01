@@ -1,4 +1,4 @@
-
+//archivo Color.kt
 package com.keyli.plazatrujillo.ui.theme
 
 // Importar otras dependencias como dp, sp, etc.

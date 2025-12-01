@@ -27,7 +27,7 @@ fun AppDrawer(
         modifier = Modifier.width(300.dp)
     ) {
         // Empujamos el contenido hacia abajo para que quede justo debajo del TopAppBar
-        Spacer(modifier = Modifier.height(56.dp)) // Ajusta si tu TopAppBar tiene otra altura
+        Spacer(modifier = Modifier.height(58.dp)) // Ajusta si tu TopAppBar tiene otra altura
 
         Text(
             text = "MENU",

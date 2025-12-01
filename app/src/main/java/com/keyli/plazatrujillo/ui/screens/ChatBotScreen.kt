@@ -1,31 +1,21 @@
 package com.keyli.plazatrujillo.ui.screens
 
-import androidx.navigation.NavHostController
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,11 +24,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
+import com.keyli.plazatrujillo.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import com.keyli.plazatrujillo.ui.theme.*
 
-data class ChatMessage(val id: Int, val text: String, val isUser: Boolean)
+data class ChatMessage(
+    val id: String,
+    val text: String,
+    val isUser: Boolean,
+    val timestamp: Long = System.currentTimeMillis()
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,293 +43,241 @@ fun ChatBotScreen(navController: NavHostController) {
     val listState = rememberLazyListState()
 
     val messages = remember { mutableStateListOf<ChatMessage>() }
-
-    // Mensaje inicial del asistente
-    LaunchedEffect(Unit) {
-        messages.add(
-            ChatMessage(
-                id = 0,
-                text = "¡Hola! Soy el Asistente IA de Plaza Trujillo. 🏨\n\nPuedo responder dudas sobre ingresos, reservas y servicios. ¿En qué puedo ayudarte?",
-                isUser = false
-            )
-        )
-        delay(120)
-        listState.animateScrollToItem(messages.lastIndex)
-    }
-
+    var isBotTyping by remember { mutableStateOf(false) }
     var input by remember { mutableStateOf("") }
 
-    val quickActions = listOf("💰 Ingresos hoy", "📈 Ocupación", "🗓️ Reservas", "☎️ Servicios")
+    val suggestedQuestions = listOf(
+        "¿Cuáles son las ganancias del mes?",
+        "¿Cuál es la tasa de ocupación actual?",
+        "¿Cuántas reservas tenemos hoy?",
+        "Muéstrame los ingresos de esta semana",
+        "¿Qué habitaciones están disponibles?",
+        "Resumen de check-ins de hoy"
+    )
 
-    // Respuesta simulada sencilla
-    suspend fun getBotReply(userText: String): String {
-        val text = userText.lowercase()
-        return when {
-            "ingres" in text || "ingresos" in text -> "Hoy hemos registrado S/ 3,450 de ingresos. ¿Deseas ver el detalle por habitación?"
-            "ocup" in text || "ocupación" in text -> "La ocupación actual es 78%. Hay 12 habitaciones disponibles."
-            "reserv" in text || "reserva" in text -> "Actualmente tienes 5 reservas nuevas para las próximas 24 horas."
-            "servicio" in text || "servicios" in text -> "Ofrecemos lavandería, desayuno buffet y transporte al aeropuerto. ¿Cuál te interesa?"
-            else -> listOf(
-                "Entendido. ¿Quieres que busque más información?",
-                "Puedo ayudarte con ingresos, reservas y servicios. ¿Cuál eliges?",
-                "Lo siento, no entendí bien. ¿Puedes reformularlo?"
-            ).random()
+    LaunchedEffect(Unit) {
+        if (messages.isEmpty()) {
+            isBotTyping = true
+            delay(800)
+            messages.add(
+                ChatMessage(
+                    id = "welcome",
+                    text = "¡Hola! Soy tu asistente virtual de Plaza Trujillo. 🏨✨\n\nPuedes preguntarme sobre finanzas, ocupación o estado del hotel. Selecciona una opción abajo o escribe tu consulta.",
+                    isUser = false
+                )
+            )
+            isBotTyping = false
         }
     }
 
-    // --- Diseño principal que coincide con la screenshot ---
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(LightBackground)
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-    ) {
-        // Cabecera interna del asistente (bloque gris claro con icono circular)
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 10.dp),
-            colors = CardDefaults.cardColors(containerColor = LightSurface),
-            shape = RoundedCornerShape(12.dp),
-            elevation = CardDefaults.cardElevation(0.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+    suspend fun processMessage(userText: String) {
+        messages.add(ChatMessage(id = System.nanoTime().toString(), text = userText, isUser = true))
+        input = ""
+        scope.launch {
+            delay(100)
+            listState.animateScrollToItem(messages.size)
+        }
+
+        isBotTyping = true
+        delay(1500)
+
+        val lowerText = userText.lowercase()
+        val replyText = when {
+            "ganancias" in lowerText && "mes" in lowerText -> "💰 **Ganancias de Diciembre:**\n\nHasta el momento, las ganancias netas son de **S/ 45,230.00**.\nEsto representa un aumento del 12% respecto al mes anterior."
+            "ocupación" in lowerText || "tasa" in lowerText -> "📈 **Tasa de Ocupación:**\n\nActualmente el hotel está al **78% de su capacidad**.\nHay 35 habitaciones ocupadas de 45 disponibles."
+            "reservas" in lowerText && "hoy" in lowerText -> "📅 **Reservas para Hoy:**\n\nTenemos **8 nuevas reservas** confirmadas para ingresar el día de hoy.\n3 de ellas son VIP (Suite)."
+            "ingresos" in lowerText && "semana" in lowerText -> "📊 **Ingresos de la Semana:**\n\n• Lunes: S/ 3,200\n• Martes: S/ 4,100\n• Miércoles: S/ 3,800\n\n**Total acumulado:** S/ 11,100."
+            "disponibles" in lowerText -> "🛏️ **Habitaciones Disponibles:**\n\nQuedan **10 habitaciones** libres ahora mismo:\n• 4 Simples\n• 4 Dobles\n• 2 Matrimoniales"
+            "check-in" in lowerText || "resumen" in lowerText -> "🛎️ **Resumen de Check-ins:**\n\n• Realizados: 5\n• Pendientes: 3\n• No-shows: 0\n\nEl próximo check-in está programado para las 14:30 hrs."
+            else -> "Entiendo tu consulta sobre '$userText', pero necesito consultar la base de datos central. ¿Podrías intentar con una de las opciones sugeridas?"
+        }
+
+        isBotTyping = false
+        messages.add(ChatMessage(id = System.nanoTime().toString(), text = replyText, isUser = false))
+        scope.launch {
+            delay(100)
+            listState.animateScrollToItem(messages.lastIndex)
+        }
+    }
+
+    Scaffold(
+        containerColor = LightBackground,
+        bottomBar = {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp)
+                    .background(LightBackground)
+                    .imePadding()
             ) {
-                // Icono circular naranja
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(OrangePrimary),
-                    contentAlignment = Alignment.Center
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // icono blanco dentro del círculo
-                    Icon(
-                        imageVector = Icons.Filled.Star,
-                        contentDescription = "Asistente",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column {
-                    Text(
-                        text = "Plaza Trujillo AI",
-                        color = TextBlack,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = "Asistente Virtual Hotelero",
-                        color = TextGray,
-                        fontSize = 13.sp
-                    )
-                }
-            }
-        }
-
-        // Card grande blanca con bordes redondeados que contiene los mensajes
-        Card(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            shape = RoundedCornerShape(18.dp),
-            elevation = CardDefaults.cardElevation(0.dp)
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 18.dp, vertical = 18.dp),
-                    verticalArrangement = Arrangement.Top
-                ) {
-                    itemsIndexed(messages) { _, msg ->
-                        MessageBubble(msg)
-                        Spacer(modifier = Modifier.height(14.dp))
+                    items(suggestedQuestions) { question ->
+                        Surface(
+                            onClick = { scope.launch { processMessage(question) } },
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.White,
+                            border = BorderStroke(1.dp, OrangePrimary.copy(alpha = 0.5f))
+                        ) {
+                            Text(
+                                text = question,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                color = TextBlack,
+                                fontSize = 13.sp
+                            )
+                        }
                     }
-                    // espacio al final para que el input no tape mensajes
-                    item { Spacer(modifier = Modifier.height(10.dp)) }
                 }
-            }
-        }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Quick action chips: diseño tipo "pill" con borde y fondo blanco
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(bottom = 10.dp)
-        ) {
-            quickActions.forEachIndexed { _, action ->
                 Surface(
-                    modifier = Modifier
-                        .padding(end = 10.dp)
-                        .height(44.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    color = LightSurface,
-                    border = BorderStroke(1.dp, Color(0xFFE6E6E6)),
+                    color = Color.White,
+                    shadowElevation = 12.dp,
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                 ) {
                     Row(
                         modifier = Modifier
-                            .padding(horizontal = 12.dp)
-                            .clickable {
-                                // enviar mensaje simulado al click
-                                val id = messages.size
-                                messages.add(ChatMessage(id, action, isUser = true))
-                                scope.launch {
-                                    listState.animateScrollToItem(messages.lastIndex)
-                                    delay(220)
-                                    val reply = getBotReply(action)
-                                    messages.add(ChatMessage(messages.size, reply, isUser = false))
-                                    delay(60)
-                                    listState.animateScrollToItem(messages.lastIndex)
-                                }
-                            },
+                            .fillMaxWidth()
+                            .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(action, color = TextBlack, fontSize = 14.sp)
+                        OutlinedTextField(
+                            value = input,
+                            onValueChange = { input = it },
+                            placeholder = { Text("Escribe una consulta...", color = TextGray) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(52.dp),
+                            shape = RoundedCornerShape(26.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = OrangePrimary,
+                                unfocusedBorderColor = TextGray.copy(alpha = 0.3f),
+                                focusedContainerColor = LightBackground,
+                                unfocusedContainerColor = LightBackground
+                            ),
+                            singleLine = true
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        FloatingActionButton(
+                            onClick = {
+                                if (input.isNotBlank()) { scope.launch { processMessage(input) } }
+                            },
+                            containerColor = OrangePrimary,
+                            contentColor = Color.White,
+                            shape = CircleShape,
+                            modifier = Modifier.size(50.dp)
+                        ) {
+                            Icon(Icons.Default.Send, contentDescription = "Enviar")
+                        }
                     }
                 }
             }
         }
+    ) { innerPadding ->
 
-        // Barra inferior (input + botón) con fondo claro y esquinas superiores redondeadas
-        Surface(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 6.dp),
-            color = LightSurface,
-            shape = RoundedCornerShape(18.dp),
+                .fillMaxSize()
+                .padding(bottom = innerPadding.calculateBottomPadding())
+            // AQUI ESTABA EL ERROR: NO AGREGAMOS PADDING ARRIBA
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
+            // HEADER DEL ASISTENTE (PEGADO ARRIBA)
+            // Le quité el 'statusBarsPadding' y le puse un borde inferior sutil
+            Surface(
+                color = Color.White,
+                shadowElevation = 2.dp, // Sombra pequeña para separar del contenido
+                modifier = Modifier.fillMaxWidth(),
+                border = BorderStroke(1.dp, Color(0xFFEEEEEE)) // Borde sutil abajo
             ) {
-                OutlinedTextField(
-                    value = input,
-                    onValueChange = { input = it },
-                    placeholder = { Text("Escribe aquí...", color = TextGray) },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(50.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                        cursorColor = OrangePrimary,
-                        focusedTextColor = TextBlack,
-                        unfocusedTextColor = TextBlack
-                    ),
-                    singleLine = true,
-                )
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                // Botón enviar circular naranja
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(OrangePrimary)
-                        .clickable {
-                            if (input.isBlank()) return@clickable
-                            val userText = input.trim()
-                            val id = messages.size
-                            messages.add(ChatMessage(id, userText, isUser = true))
-                            input = ""
-                            scope.launch {
-                                listState.animateScrollToItem(messages.lastIndex)
-                                delay(450)
-                                val reply = getBotReply(userText)
-                                messages.add(ChatMessage(messages.size, reply, isUser = false))
-                                delay(80)
-                                listState.animateScrollToItem(messages.lastIndex)
-                            }
-                        },
-                    contentAlignment = Alignment.Center
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(16.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Send,
-                        contentDescription = "Enviar",
-                        tint = Color.White
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(OrangePrimary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White)
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text("Asistente IA", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextBlack)
+                        Text(
+                            text = if (isBotTyping) "Escribiendo..." else "En línea",
+                            color = if (isBotTyping) OrangePrimary else StatusGreen,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            // LISTA DE MENSAJES
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                itemsIndexed(messages) { _, msg ->
+                    ChatBubble(message = msg)
+                }
+                if (isBotTyping) {
+                    item { TypingIndicator() }
                 }
             }
         }
     }
 }
 
+// --- COMPONENTES VISUALES ---
 @Composable
-private fun MessageBubble(msg: ChatMessage) {
-    // Estilo parecido a la imagen: burbuja del asistente en gris muy claro con esquinas redondeadas grandes
-    val bubbleBg = if (msg.isUser) OrangePrimary else Color(0xFFF0F4F8)
-    val textColor = if (msg.isUser) Color.White else TextBlack
+fun ChatBubble(message: ChatMessage) {
+    val isUser = message.isUser
+    val bubbleColor = if (isUser) OrangePrimary else Color.White
+    val textColor = if (isUser) Color.White else TextBlack
+    val align = if (isUser) Alignment.CenterEnd else Alignment.CenterStart
+    val shape = if (isUser) RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp) else RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp)
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (msg.isUser) Arrangement.End else Arrangement.Start,
-        verticalAlignment = Alignment.Top
-    ) {
-        if (!msg.isUser) {
-            // pequeño icono del asistente a la izquierda (fuera de la burbuja)
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(OrangePrimary.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Star,
-                    contentDescription = "Asistente",
-                    tint = OrangePrimary
-                )
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = align) {
+        Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.widthIn(max = 300.dp)) {
+            if (!isUser) {
+                Icon(Icons.Default.AutoAwesome, null, tint = OrangePrimary, modifier = Modifier.size(24.dp).padding(bottom = 4.dp))
+                Spacer(modifier = Modifier.width(8.dp))
             }
-            Spacer(modifier = Modifier.width(8.dp))
+            Surface(color = bubbleColor, shape = shape, shadowElevation = 2.dp, border = if(!isUser) BorderStroke(1.dp, Color(0xFFEEEEEE)) else null) {
+                Text(text = message.text, color = textColor, modifier = Modifier.padding(14.dp), fontSize = 15.sp, lineHeight = 22.sp)
+            }
+            if (isUser) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(Icons.Default.Person, null, tint = TextGray, modifier = Modifier.size(24.dp).padding(bottom = 4.dp))
+            }
         }
+    }
+}
 
-        // Burbuja de mensaje
-        Card(
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = bubbleBg),
-            modifier = Modifier.widthIn(max = 300.dp)
-        ) {
-            Text(
-                text = msg.text,
-                color = textColor,
-                modifier = Modifier.padding(14.dp),
-                fontSize = 15.sp
-            )
-        }
+@Composable
+fun TypingIndicator() {
+    val transition = rememberInfiniteTransition(label = "typing")
+    val alpha1 by transition.animateFloat(0.3f, 1f, infiniteRepeatable(tween(600), RepeatMode.Reverse), "dot1")
+    val alpha2 by transition.animateFloat(0.3f, 1f, infiniteRepeatable(tween(600, 200), RepeatMode.Reverse), "dot2")
+    val alpha3 by transition.animateFloat(0.3f, 1f, infiniteRepeatable(tween(600, 400), RepeatMode.Reverse), "dot3")
 
-        if (msg.isUser) {
-            Spacer(modifier = Modifier.width(8.dp))
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(OrangeSecondary.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Person,
-                    contentDescription = "Usuario",
-                    tint = OrangeSecondary
-                )
+    Row(verticalAlignment = Alignment.Bottom) {
+        Icon(Icons.Default.AutoAwesome, null, tint = OrangePrimary, modifier = Modifier.size(24.dp).padding(bottom = 4.dp))
+        Spacer(modifier = Modifier.width(8.dp))
+        Surface(color = Color.White, shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp), shadowElevation = 2.dp, modifier = Modifier.height(40.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp)) {
+                Box(Modifier.size(8.dp).clip(CircleShape).background(TextGray.copy(alpha = alpha1)))
+                Spacer(Modifier.width(4.dp))
+                Box(Modifier.size(8.dp).clip(CircleShape).background(TextGray.copy(alpha = alpha2)))
+                Spacer(Modifier.width(4.dp))
+                Box(Modifier.size(8.dp).clip(CircleShape).background(TextGray.copy(alpha = alpha3)))
             }
         }
     }

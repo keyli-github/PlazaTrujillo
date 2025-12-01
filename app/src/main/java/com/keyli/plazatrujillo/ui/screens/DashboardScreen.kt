@@ -116,6 +116,11 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // --- AGREGADO: CHECK-OUT DE HOY ---
+            TodayCheckOuts(cardBgColor, textColor, isDarkTheme)
+
+            Spacer(modifier = Modifier.height(24.dp))
+
             // --- NUEVO: RESERVAS RECIENTES ---
             RecentReservations(cardBgColor, textColor, isDarkTheme)
 
@@ -300,6 +305,51 @@ fun CheckInItem(time: String, name: String, room: String, textColor: Color) {
     }
 }
 
+// --- AGREGADO: CHECK-OUT DE HOY ---
+@Composable
+fun TodayCheckOuts(cardBg: Color, text: Color, dark: Boolean) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = cardBg),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text("Check-out de Hoy", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = text)
+            Text("Huéspedes que salen hoy", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 20.dp))
+
+            CheckOutItem("11:00", "Carlos Ruiz", "Hab. 302", text)
+            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 12.dp))
+            CheckOutItem("12:00", "Elena Gomez", "Hab. 104", text)
+        }
+    }
+}
+
+@Composable
+fun CheckOutItem(time: String, name: String, room: String, textColor: Color) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Icono de Salida (Naranja/Rojo)
+        Icon(
+            Icons.AutoMirrored.Filled.ExitToApp,
+            contentDescription = null,
+            tint = PieOrange, // Naranja para diferenciar de check-in
+            modifier = Modifier.size(28.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // Hora y Nombre
+        Column(modifier = Modifier.weight(1f)) {
+            Text(time, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = textColor)
+            Text(name, color = Color.Gray, fontSize = 14.sp)
+        }
+
+        // Habitación a la derecha
+        Text(room, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = textColor)
+    }
+}
+
 // 3. RESERVAS RECIENTES (Lista con estados de color)
 @Composable
 fun RecentReservations(cardBg: Color, text: Color, dark: Boolean) {
@@ -377,7 +427,6 @@ private fun formatPct(value: Float): String {
 // Mantén el código de estas funciones que ya tenías en el archivo anterior.
 // (KpiSection, MonthlyIncomeChart, IncomeVsExpensesChart, PaymentMethodChart, IconBox, NotificationItem...)
 // Si las borraste, avísame y te pego el archivo completo de 500 líneas.
-
 @Composable
 fun DashboardHeader(
     isDarkTheme: Boolean,
@@ -462,7 +511,7 @@ fun NotificationItem(name: String, time: String, highlightColor: Color, textColo
     }
 }
 
-/* --- KPI SECTION (kept same structure, small polish) --- */
+/* --- KPI SECTION --- */
 @Composable
 fun KpiSection(isDarkTheme: Boolean) {
     val cardBg = if (isDarkTheme) DarkSurface else LightSurface
@@ -530,54 +579,52 @@ fun KpiCard(
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = cardBg),
-        shape = RoundedCornerShape(18.dp), // Esquinas más redondeadas
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp), // Elevación sutil para un look premium
+        shape = RoundedCornerShape(18.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.padding(24.dp).fillMaxWidth(), // Más padding
+            modifier = Modifier.padding(24.dp).fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             // 1. Icono y Título/Valor
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Contenedor del Icono (más grande y centrado)
                 Box(
                     modifier = Modifier
-                        .size(56.dp) // Tamaño aumentado
-                        .background(bgIcon, RoundedCornerShape(16.dp)), // Esquinas también redondeadas
+                        .size(56.dp)
+                        .background(bgIcon, RoundedCornerShape(16.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(icon, null, tint = colorIcon, modifier = Modifier.size(32.dp)) // Icono más grande
+                    Icon(icon, null, tint = colorIcon, modifier = Modifier.size(32.dp))
                 }
 
                 Spacer(modifier = Modifier.width(16.dp))
 
                 Column {
-                    Text(title, color = Color.Gray, fontSize = 13.sp) // Título un poco más grande
+                    Text(title, color = Color.Gray, fontSize = 13.sp)
                     Text(
                         value,
-                        fontWeight = FontWeight.ExtraBold, // Más negrita
-                        fontSize = 24.sp, // Valor más destacado
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 24.sp,
                         color = textColor
                     )
                 }
             }
 
-            // 2. Indicador de Porcentaje (Mejor Contraste)
+            // 2. Indicador de Porcentaje
             Box(
                 modifier = Modifier
                     .background(
-                        if (isUp) StatusGreen.copy(0.15f) else StatusRed.copy(0.15f), // Más opacidad
+                        if (isUp) StatusGreen.copy(0.15f) else StatusRed.copy(0.15f),
                         RoundedCornerShape(6.dp)
                     )
-                    .padding(horizontal = 8.dp, vertical = 4.dp) // Más padding interno
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
                     text = (if (isUp) "↑ " else "↓ ") + pct,
                     color = if (isUp) StatusGreen else StatusRed,
-                    fontSize = 13.sp, // Tamaño ajustado
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -585,16 +632,13 @@ fun KpiCard(
     }
 }
 
-/* --- MonthlyIncomeChart: ahora con ejes Y etiquetados y "área" debajo para look corporativo --- */
+/* --- MonthlyIncomeChart --- */
 @Composable
 fun MonthlyIncomeChart(cardBg: Color, text: Color) {
-
-    // Mantengo tus nombres y estructura de datos, pero hago más meses y valores realistas
     val months = listOf("Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Set","Oct","Nov","Dic")
     val values = listOf(26000, 28000, 30000, 34000, 36000, 32000, 38000, 41000, 39000, 43000, 40000, 42000)
 
     var selected by remember { mutableStateOf(-1) }
-
     val max = (values.maxOrNull() ?: 1).toFloat()
 
     Card(
@@ -602,16 +646,14 @@ fun MonthlyIncomeChart(cardBg: Color, text: Color) {
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-
         Column(Modifier.padding(16.dp)) {
-
             Text("Ingresos mensuales", fontWeight = FontWeight.Bold, color = text)
             Text("Últimos 12 meses", color = Color.Gray, fontSize = 12.sp)
 
             Spacer(Modifier.height(12.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                // Y axis labels (4 ticks)
+                // Y axis labels
                 Column(
                     modifier = Modifier.width(48.dp).padding(end = 8.dp),
                     verticalArrangement = Arrangement.SpaceBetween
@@ -637,7 +679,6 @@ fun MonthlyIncomeChart(cardBg: Color, text: Color) {
                             drawLine(grid, Offset(0f, y), Offset(w, y), strokeWidth = 1f)
                         }
 
-                        // Prepare area path
                         val step = w / (values.size - 1).coerceAtLeast(1)
                         val areaPath = Path()
                         values.forEachIndexed { i, v ->
@@ -645,29 +686,24 @@ fun MonthlyIncomeChart(cardBg: Color, text: Color) {
                             val y = h - (v / max) * h
                             if (i == 0) areaPath.moveTo(x, y) else areaPath.lineTo(x, y)
                         }
-                        // Close the path to bottom
                         areaPath.lineTo(w, h)
                         areaPath.lineTo(0f, h)
                         areaPath.close()
 
-                        // Fill area with gradient
                         drawPath(
                             areaPath,
                             Brush.verticalGradient(listOf(OrangePrimary.copy(alpha = 0.18f), OrangeSecondary.copy(alpha = 0.06f))),
                             style = Fill
                         )
 
-                        // Draw smooth line on top
                         val linePath = Path()
                         values.forEachIndexed { i, v ->
                             val x = i * step
                             val y = h - (v / max) * h
                             if (i == 0) linePath.moveTo(x, y) else linePath.lineTo(x, y)
-                            // marker
                             drawCircle(Color.White, radius = 4f, center = Offset(x, y))
                             drawCircle(OrangePrimary, radius = 2f, center = Offset(x, y))
                         }
-
                         drawPath(linePath, OrangePrimary, style = Stroke(width = 3f, cap = StrokeCap.Round))
                     }
 
@@ -681,13 +717,13 @@ fun MonthlyIncomeChart(cardBg: Color, text: Color) {
                         }
                     }
 
-                    // Selected tooltip (non-animated, static)
+                    // Tooltip
                     if (selected in values.indices) {
                         val idx = selected
                         val label = formatCurrency(values[idx])
                         Box(
                             modifier = Modifier
-                                .offset(x = ((selected / (months.size - 1).toFloat()) * (LocalDensity.current.run { (/*approx*/300).toDp().toPx() })).dp)
+                                .offset(x = ((selected / (months.size - 1).toFloat()) * (LocalDensity.current.run { (300).toDp().toPx() })).dp)
                                 .background(cardBg, RoundedCornerShape(8.dp))
                                 .padding(8.dp)
                         ) {
@@ -700,186 +736,110 @@ fun MonthlyIncomeChart(cardBg: Color, text: Color) {
     }
 }
 
-/* --- IncomeVsExpensesChart: líneas con áreas rellenas, leyenda y ejes --- */
+/* --- INGRESOS ANUALES (Modificado: Antes Ingresos vs Gastos) --- */
 @Composable
-
 fun IncomeVsExpensesChart(cardBg: Color, text: Color) {
+    // NOTA: Se mantiene el nombre de la función para compatibilidad,
+    // pero ahora muestra "Ingresos Anuales" (12 meses) con diseño similar al mensual.
 
+    val months = listOf("Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Set","Oct","Nov","Dic")
+    // Datos anuales acumulados o proyectados (diferentes al mensual para el ejemplo)
+    val values = listOf(320000, 340000, 360000, 350000, 380000, 400000, 410000, 420000, 435000, 450000, 460000, 480000)
 
-
-// Datos realistas por mes (porcentajes promedio por ejemplo)
-
-    val income = listOf(42f, 48f, 44f, 50f, 52f, 49f, 54f)
-
-    val expenses = listOf(58f, 52f, 56f, 50f, 48f, 51f, 46f)
-
-    val labels = listOf("Ene","Mar","May","Jul","Sep","Nov","Dic")
-
-
+    val max = (values.maxOrNull() ?: 1).toFloat()
+    var selected by remember { mutableStateOf(-1) }
 
     Card(
-
         colors = CardDefaults.cardColors(containerColor = cardBg),
-
         shape = RoundedCornerShape(16.dp),
-
         modifier = Modifier.fillMaxWidth()
-
     ) {
-
         Column(Modifier.padding(16.dp)) {
-
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-
-                Column {
-
-                    Text("Ingresos vs gastos", fontWeight = FontWeight.Bold, color = text)
-
-                    Text("Comparación mensual", color = Color.Gray, fontSize = 12.sp)
-
-                }
-
-// Legend
-
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-
-                    LegendItem("Ingresos", OrangePrimary)
-
-                    LegendItem("Gastos", StatusRed)
-
-                }
-
-            }
-
-
+            // Título cambiado
+            Text("Ingresos Anuales", fontWeight = FontWeight.Bold, color = text)
+            Text("Tendencia últimos 12 meses", color = Color.Gray, fontSize = 12.sp)
 
             Spacer(Modifier.height(12.dp))
 
-
-
-            Canvas(modifier = Modifier.fillMaxWidth().height(220.dp)) {
-
-                val w = size.width
-
-                val h = size.height
-
-
-
-// Gridlines
-
-                val gridColor = Color.LightGray.copy(alpha = 0.18f)
-
-                for (i in 0..4) {
-
-                    val y = h * (i / 4f)
-
-                    drawLine(gridColor, Offset(0f, y), Offset(w, y), strokeWidth = 1f)
-
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                // Eje Y (Etiquetas de valor)
+                Column(
+                    modifier = Modifier.width(56.dp).padding(end = 8.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    val ticks = 4
+                    for (i in 0..ticks) {
+                        val valueAtTick = ((max / ticks) * (ticks - i)).toInt()
+                        Text(formatCurrency(valueAtTick), fontSize = 10.sp, color = Color.Gray)
+                        if (i < ticks) Spacer(modifier = Modifier.height(36.dp))
+                    }
                 }
 
+                // Área del Gráfico
+                Box(modifier = Modifier.weight(1f)) {
+                    Canvas(modifier = Modifier.height(220.dp).fillMaxWidth()) {
+                        val w = size.width
+                        val h = size.height
 
+                        // Líneas de cuadrícula
+                        val gridColor = Color.LightGray.copy(alpha = 0.18f)
+                        for (i in 0..4) {
+                            val y = h * (i / 4f)
+                            drawLine(gridColor, Offset(0f, y), Offset(w, y), strokeWidth = 1f)
+                        }
 
-// Draw filled areas and lines
+                        val step = w / (values.size - 1).coerceAtLeast(1)
 
-                fun drawSeries(points: List<Float>, color: Color, fillAlpha: Float) {
+                        // 1. Dibujar Área Rellena (Gradiente)
+                        val areaPath = Path()
+                        values.forEachIndexed { i, v ->
+                            val x = i * step
+                            val y = h - (v.toFloat() / max) * h
+                            if (i == 0) areaPath.moveTo(x, y) else areaPath.lineTo(x, y)
+                        }
+                        areaPath.lineTo(w, h)
+                        areaPath.lineTo(0f, h)
+                        areaPath.close()
 
-                    val step = w / (points.size - 1).coerceAtLeast(1)
-
-                    val path = Path()
-
-                    points.forEachIndexed { i, v ->
-
-                        val x = i * step
-
-                        val y = h - (v / 100f) * h
-
-                        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-
-                    }
-
-// close for area
-
-                    path.lineTo(w, h)
-
-                    path.lineTo(0f, h)
-
-                    path.close()
-
-
-
-                    drawPath(path, Brush.verticalGradient(listOf(color.copy(alpha = fillAlpha), color.copy(alpha = fillAlpha * 0.2f))), style = Fill)
-
-
-
-// Outline
-
-                    val outline = Path()
-
-                    points.forEachIndexed { i, v ->
-
-                        val x = i * step
-
-                        val y = h - (v / 100f) * h
-
-                        if (i == 0) outline.moveTo(x, y) else outline.lineTo(x, y)
-
-                        drawCircle(color, radius = 5f, center = Offset(x, y))
-
-                    }
-
-                    drawPath(outline, color, style = Stroke(width = 4f, cap = StrokeCap.Round))
-
-                }
-
-
-
-                drawSeries(income, OrangePrimary, 0.15f)
-
-                drawSeries(expenses, StatusRed, 0.12f)
-
-
-
-// X labels
-
-                val labelStep = w / (labels.size - 1).coerceAtLeast(1)
-
-                labels.forEachIndexed { i, l ->
-
-                    drawContext.canvas.nativeCanvas.apply {
-
-                        drawText(
-
-                            l,
-
-                            i * labelStep,
-
-                            h + 20f,
-
-                            android.graphics.Paint().apply {
-
-                                color = android.graphics.Color.DKGRAY
-
-                                textSize = 28f
-
-                                isAntiAlias = true
-
-                            }
-
+                        // Usamos un gradiente ligeramente diferente (más verdoso/dorado) para diferenciarlo del mensual
+                        val gradientBrush = Brush.verticalGradient(
+                            listOf(Color(0xFFFFB74D).copy(alpha = 0.25f), Color(0xFFFFB74D).copy(alpha = 0.05f))
                         )
+                        drawPath(areaPath, gradientBrush, style = Fill)
 
+                        // 2. Dibujar Línea y Puntos
+                        val linePath = Path()
+                        val lineColor = Color(0xFFFF9800) // Naranja fuerte
+
+                        values.forEachIndexed { i, v ->
+                            val x = i * step
+                            val y = h - (v.toFloat() / max) * h
+                            if (i == 0) linePath.moveTo(x, y) else linePath.lineTo(x, y)
+
+                            // Puntos en cada mes
+                            drawCircle(cardBg, radius = 5f, center = Offset(x, y)) // Borde del punto (color fondo)
+                            drawCircle(lineColor, radius = 3f, center = Offset(x, y)) // Centro del punto
+                        }
+                        drawPath(linePath, lineColor, style = Stroke(width = 3f, cap = StrokeCap.Round))
                     }
 
+                    // Etiquetas Eje X (Meses)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        months.forEachIndexed { i, m ->
+                            // Mostramos solo meses impares si el espacio es reducido, o todos
+                            Text(m, fontSize = 11.sp, color = Color.Gray)
+                        }
+                    }
                 }
-
             }
-
         }
-
     }
-
 }
 
-/* --- LegendItem (reuse) --- */
+/* --- LegendItem (Ya no se usa en el gráfico anual, pero se mantiene por si acaso) --- */
 @Composable
 fun LegendItem(text: String, color: Color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -892,15 +852,12 @@ fun LegendItem(text: String, color: Color) {
 /* --- PaymentMethodChart: anillo (donut) con porcentajes y leyenda con % --- */
 @Composable
 fun PaymentMethodChart(cardBg: Color, text: Color) {
-
-    // Manteniendo tus variables, nombres y colores
     val labels = listOf("Efectivo","Tarjeta","Yape","Transferencia")
     val values = listOf(20376f,13584f,4792f,4248f)
     val colors = listOf(PiePurple, PieGreen, PieBlue, PieOrange)
     val total = values.sum()
     val pct = values.map { (it / total * 100f) }
 
-    // Estado para la interactividad
     var selected by remember { mutableStateOf(-1) }
 
     Card(
@@ -908,18 +865,13 @@ fun PaymentMethodChart(cardBg: Color, text: Color) {
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-
-        Column(Modifier.padding(20.dp)) { // Más padding para un look más "premium"
-            // Título
+        Column(Modifier.padding(20.dp)) {
             Text("Ingresos por método", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = text)
             Text("Distribución de pagos", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 24.dp))
 
-            // 1. Contenedor para el Gráfico de Anillo (Centrado)
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp), // Altura dedicada solo al gráfico
-                contentAlignment = Alignment.Center // CENTRADO Horizontal y Vertical
+                modifier = Modifier.fillMaxWidth().height(180.dp),
+                contentAlignment = Alignment.Center
             ) {
                 Canvas(modifier = Modifier.size(160.dp)) {
                     var start = -90f
@@ -928,8 +880,6 @@ fun PaymentMethodChart(cardBg: Color, text: Color) {
                     values.forEachIndexed { i, v ->
                         val sweep = (v / total) * 360f
                         val isCurrentSelected = selected == i
-
-                        // Si está seleccionado, hacemos el trazo más ancho y usamos el color primario
                         val stroke = if (isCurrentSelected) baseStrokeWidth + 8f else baseStrokeWidth
                         val colorToUse = if (isCurrentSelected) OrangePrimary else colors[i]
 
@@ -938,12 +888,11 @@ fun PaymentMethodChart(cardBg: Color, text: Color) {
                             startAngle = start,
                             sweepAngle = sweep,
                             useCenter = false,
-                            style = Stroke(width = stroke, cap = StrokeCap.Butt) // Usamos Butt para que se vea más limpio
+                            style = Stroke(width = stroke, cap = StrokeCap.Butt)
                         )
                         start += sweep
                     }
 
-                    // Etiqueta central (Total)
                     drawContext.canvas.nativeCanvas.apply {
                         val paintText = android.graphics.Paint().apply {
                             color = android.graphics.Color.DKGRAY
@@ -951,16 +900,14 @@ fun PaymentMethodChart(cardBg: Color, text: Color) {
                             textAlign = android.graphics.Paint.Align.CENTER
                             isFakeBoldText = false
                         }
-                        // Draw "Total"
                         drawText("Total", size.width / 2, size.height / 2 - 8f, paintText)
-                        // Draw Amount
                         drawText(
                             formatCurrency(total.toInt()),
                             size.width / 2,
                             size.height / 2 + 22f,
                             paintText.apply {
-                                textSize = 32f // Monto más grande
-                                color = android.graphics.Color.BLACK // Negro más fuerte
+                                textSize = 32f
+                                color = android.graphics.Color.BLACK
                                 isFakeBoldText = true
                             }
                         )
@@ -968,40 +915,27 @@ fun PaymentMethodChart(cardBg: Color, text: Color) {
                 }
             }
 
+            Spacer(Modifier.height(28.dp))
 
-            Spacer(Modifier.height(28.dp)) // Más espacio entre el donut y la leyenda
-
-            // 2. Leyenda en la parte inferior (Profesional y Ordenada)
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween, // Separa los elementos horizontalmente
-                verticalArrangement = Arrangement.spacedBy(16.dp), // Más espacio vertical entre filas
-                maxItemsInEachRow = 2 // Máximo 2 columnas para que no se aplasten
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                maxItemsInEachRow = 2
             ) {
                 labels.forEachIndexed { i, l ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .weight(1f) // Ocupa la mitad del espacio disponible
-                            .clickable { selected = i }
+                        modifier = Modifier.weight(1f).clickable { selected = i }
                     ) {
                         val isCurrentSelected = selected == i
-
-                        // Marcador de color
-                        Box(
-                            Modifier
-                                .size(12.dp)
-                                .background(colors[i], CircleShape) // Usamos círculo para un look más moderno
-                        )
+                        Box(Modifier.size(12.dp).background(colors[i], CircleShape))
                         Spacer(Modifier.width(10.dp))
-
-                        // Texto (Método y %/Monto)
                         Column {
                             Text(l, fontSize = 12.sp, color = Color.Gray)
                             Text(
                                 text = "${formatCurrency(values[i].toInt())} • ${pct[i].toInt()}%",
                                 fontWeight = FontWeight.Bold,
-                                // Resaltar si está seleccionado (usando OrangePrimary o el color primario)
                                 color = if (isCurrentSelected) OrangePrimary else text,
                                 fontSize = 14.sp
                             )
@@ -1012,7 +946,7 @@ fun PaymentMethodChart(cardBg: Color, text: Color) {
         }
     }
 }
-/* --- PaymentLegend (kept same) --- */
+
 @Composable
 fun PaymentLegend(method: String, amount: String, color: Color, textColor: Color) {
     Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth()) {

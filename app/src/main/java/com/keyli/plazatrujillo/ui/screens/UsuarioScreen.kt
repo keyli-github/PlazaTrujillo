@@ -1,8 +1,8 @@
 package com.keyli.plazatrujillo.ui.screens
 
-
 import androidx.navigation.NavHostController
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,7 +12,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,9 +19,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.Dp
 import com.keyli.plazatrujillo.ui.theme.*
+
+// Data Class (Mismo modelo)
+data class PersonalUI(
+    val id: Int,
+    val name: String,
+    val email: String,
+    val role: String,
+    val salary: String,
+    val entryDate: String,
+    val isActive: Boolean
+)
 
 @Composable
 fun UsuarioScreen(navController: NavHostController) {
@@ -30,390 +42,218 @@ fun UsuarioScreen(navController: NavHostController) {
     var search by remember { mutableStateOf("") }
     val scrollState = rememberScrollState()
 
-    val sampleUsers = listOf(
-        Triple("Juan Pérez", "juan.perez@plaza.com", "Administrador"),
-        Triple("Ana López", "ana.lopez@plaza.com", "Recepcionista"),
-        Triple("Carlos Ruiz", "carlos.ruiz@plaza.com", "Mantenimiento")
+    val usersList = listOf(
+        PersonalUI(1,"Marco Gutierrez","marco.gutierrez@plaza.com","Administrador","S/ 3,500","15/01/2024",true),
+        PersonalUI(2,"Frank Castro","frank.castro@plaza.com","Recepcionista","S/ 2,200","20/02/2024",true),
+        PersonalUI(3,"Keyli Roncal","keyli.roncal@plaza.com","Mantenimiento","S/ 1,800","10/03/2024",true),
+        PersonalUI(4,"Karina Guerrero","karina.guerrero@plaza.com","Administrador","S/ 3,500","05/04/2024",true),
+        PersonalUI(5,"Cristian Zavaleta","cristian.zavaleta@plaza.com","Seguridad","S/ 1,900","12/04/2024",false),
+        PersonalUI(6,"Luis Alonso","luis.alonso@plaza.com","Logística","S/ 2,500","01/05/2024",true)
     )
 
-    val sampleRoles = listOf(
-        Pair("Administrador", "S/ 3,500"),
-        Pair("Recepcionista", "S/ 2,200"),
-        Pair("Mantenimiento", "S/ 1,800")
-    )
-
-    val sampleDates = listOf(
-        Pair("15/01/2024", "Activo"),
-        Pair("20/02/2024", "Activo"),
-        Pair("10/03/2024", "Inactivo")
-    )
-
-    val sampleStatus = listOf(
-        Pair("Activo", true),
-        Pair("Activo", true),
-        Pair("Inactivo", false)
-    )
+    val filteredUsers = usersList.filter {
+        it.name.contains(search, true) || it.email.contains(search, true)
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(LightBackground)
+            .background(LightBackground) // Color Global
             .verticalScroll(scrollState)
-            .padding(16.dp)
+            .padding(20.dp) // Aumentado padding general
     ) {
 
-        /* ---------- CARD PRINCIPAL ---------- */
+        Text(
+            text = "Gestión de Personal",
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextBlack,
+            modifier = Modifier.padding(bottom = 20.dp)
+        )
+
+        // --- TARJETA DE BUSQUEDA ---
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = LightSurface),
             shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(8.dp)
+            elevation = CardDefaults.cardElevation(2.dp) // Elevación sutil
         ) {
-            Column(modifier = Modifier.padding(18.dp)) {
 
-                Text(
-                    text = "Gestión de Usuarios",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextBlack
-                )
-
-                Spacer(Modifier.height(12.dp))
+            Column(modifier = Modifier.padding(20.dp)) {
 
                 OutlinedTextField(
                     value = search,
                     onValueChange = { search = it },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Buscar usuario, correo…", color = TextGray) },
+                    placeholder = { Text("Buscar por nombre o correo...", color = TextGray) },
                     leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = null, tint = TextGray)
+                        Icon(Icons.Default.Search, null, tint = OrangePrimary)
                     },
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = Color.Transparent,
                         focusedBorderColor = OrangePrimary,
-                        focusedContainerColor = Color(0xFFF7F7F7),
-                        unfocusedContainerColor = Color(0xFFF7F7F7),
-                        cursorColor = OrangePrimary
-                    )
+                        unfocusedBorderColor = Color(0xFFEEEEEE),
+                        focusedContainerColor = LightBackground,
+                        unfocusedContainerColor = LightBackground,
+                        cursorColor = OrangePrimary,
+                        focusedTextColor = TextBlack,
+                        unfocusedTextColor = TextBlack
+                    ),
+                    singleLine = true
                 )
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(16.dp))
 
                 Button(
-                    onClick = { /* abrir dialogo */ },
-                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                    onClick = { navController.navigate("new_usuario") },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(12.dp)
+                        .height(52.dp), // Botón más alto
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null, tint = Color.White)
                     Spacer(Modifier.width(8.dp))
-                    Text("Crear Usuario", color = Color.White)
+                    Text("Crear Nuevo Usuario", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
-
-                Spacer(Modifier.height(12.dp))
-
-                /* Modo Demo */
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFD32F2F))
-                        Spacer(Modifier.width(12.dp))
-                        Column {
-                            Text("Modo demostración", fontWeight = FontWeight.Bold, color = Color(0xFFD32F2F))
-                            Text("Los usuarios mostrados son datos de ejemplo.", color = Color(0xFF8A2D2D))
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(14.dp))
-
-                UsersTable(users = sampleUsers)
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(24.dp))
 
-        /* ---------- ROLES ---------- */
+        // --- TARJETA DE TABLA ---
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = LightSurface),
             shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(8.dp)
+            elevation = CardDefaults.cardElevation(2.dp)
         ) {
-            Column(modifier = Modifier.padding(18.dp)) {
-                Text("Roles y Salarios", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(12.dp))
-                RolesTable(items = sampleRoles)
-            }
-        }
 
-        Spacer(Modifier.height(16.dp))
-
-        /* ---------- FECHAS ---------- */
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = LightSurface),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(8.dp)
-        ) {
-            Column(modifier = Modifier.padding(18.dp)) {
-                Text("Registro de Ingreso", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(12.dp))
-                DatesTable(items = sampleDates)
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        /* ---------- ESTADO Y ACCIONES ---------- */
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = LightSurface),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(8.dp)
-        ) {
-            Column(modifier = Modifier.padding(18.dp)) {
-                Text("Estado y Acciones", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(12.dp))
-                StatusActionsTable(items = sampleStatus)
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        /* ---------- REGISTRO DE ASISTENCIA ---------- */
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = LightSurface),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(8.dp)
-        ) {
-            Column(modifier = Modifier.padding(18.dp)) {
-                Text("Registro de Asistencia del Personal",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextBlack)
-
-                Spacer(Modifier.height(6.dp))
+            Column {
 
                 Text(
-                    "Control mensual de asistencia\n(DS N° 004-011-2000-TR)",
-                    fontSize = 14.sp,
-                    color = TextGray
+                    text = "Colaboradores Registrados",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = TextBlack,
+                    modifier = Modifier.padding(20.dp)
                 )
 
-                Spacer(Modifier.height(12.dp))
+                Divider(color = Color(0xFFF0F0F0))
 
-                Button(
-                    onClick = { /* abrir nuevo registro */ },
-                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-                    modifier = Modifier
-                        .height(48.dp)
-                        .fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Nuevo Registro", color = Color.White)
-                }
+                UnifiedUserTable(filteredUsers)
             }
         }
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(50.dp)) // Espacio final extra para scroll
     }
 }
 
-
-/* ===========================================================
-   ===============   TABLAS PERSONALIZADAS   =================
-   =========================================================== */
-
 @Composable
-private fun UsersTable(users: List<Triple<String, String, String>>) {
+private fun UnifiedUserTable(users: List<PersonalUI>) {
+
+    val hScroll = rememberScrollState()
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFF9F9F9))
+            .horizontalScroll(hScroll)
     ) {
-
+        // Cabecera con fondo gris suave del tema
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFFF1F1F1))
-                .padding(12.dp),
+                .background(LightBackground)
+                .padding(vertical = 14.dp, horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Usuario", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, color = TextBlack)
-            Text("Correo", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, color = TextBlack)
-            Text("Rol", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, color = TextBlack)
+            TableHeader("Usuario / Email", 240.dp) // Ancho aumentado
+            TableHeader("Rol / Salario", 200.dp)
+            TableHeader("F. Ingreso", 130.dp)
+            TableHeader("Estado", 110.dp)
+            TableHeader("Acciones", 100.dp)
         }
 
-        Divider()
+        Divider(color = Color(0xFFE0E0E0))
 
-        users.forEachIndexed { index, item ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(item.first, modifier = Modifier.weight(1f), color = TextBlack)
-                Text(item.second, modifier = Modifier.weight(1f), color = TextGray)
-                Text(item.third, modifier = Modifier.weight(1f), color = OrangePrimary)
+        if (users.isEmpty()) {
+            Box(Modifier.fillMaxWidth().padding(30.dp), contentAlignment = Alignment.Center) {
+                Text("No se encontraron resultados", color = TextGray)
             }
-            if (index < users.lastIndex) Divider()
+        } else {
+            users.forEach {
+                UserRowItem(it)
+                Divider(color = Color(0xFFF5F5F5))
+            }
         }
     }
 }
 
 @Composable
-private fun RolesTable(items: List<Pair<String, String>>) {
-    Column(
+private fun TableHeader(text: String, width: Dp) {
+    Text(
+        text = text,
+        modifier = Modifier.width(width),
+        fontWeight = FontWeight.Bold,
+        color = TextGray,
+        fontSize = 13.sp
+    )
+}
+
+@Composable
+private fun UserRowItem(user: PersonalUI) {
+
+    Row(
         modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFF9F9F9))
+            .padding(vertical = 16.dp, horizontal = 16.dp), // Padding vertical aumentado para evitar lo "aplastado"
+        verticalAlignment = Alignment.CenterVertically
     ) {
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFFF1F1F1))
-                .padding(12.dp)
-        ) {
-            Text("Rol", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-            Text("Salario", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+        Column(Modifier.width(240.dp).padding(end = 8.dp)) {
+            Text(user.name, fontWeight = FontWeight.SemiBold, color = TextBlack, fontSize = 15.sp)
+            Text(user.email, fontSize = 13.sp, color = TextGray, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
 
-        Divider()
+        Column(Modifier.width(200.dp).padding(end = 8.dp)) {
+            Text(user.role, color = OrangePrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+            Text(user.salary, fontSize = 13.sp, color = TextBlack)
+        }
 
-        items.forEachIndexed { index, item ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp)
-            ) {
-                Text(item.first, modifier = Modifier.weight(1f), color = OrangePrimary)
-                Text(item.second, modifier = Modifier.weight(1f), color = TextBlack)
+        Text(
+            text = user.entryDate,
+            modifier = Modifier.width(130.dp),
+            fontSize = 14.sp,
+            color = TextBlack
+        )
+
+        Box(Modifier.width(110.dp)) {
+            StatusChip(user.isActive)
+        }
+
+        Row(Modifier.width(100.dp)) {
+            IconButton(onClick = {}) {
+                Icon(Icons.Default.Edit, contentDescription = "Editar", tint = TextGray)
             }
-            if (index < items.lastIndex) Divider()
+            IconButton(onClick = {}) {
+                Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = StatusRed)
+            }
         }
     }
 }
 
 @Composable
-private fun DatesTable(items: List<Pair<String, String>>) {
-    Column(
+fun StatusChip(isActive: Boolean) {
+    // Usamos los colores globales StatusGreen y StatusRed
+    val baseColor = if (isActive) StatusGreen else StatusRed
+    val bgColor = baseColor.copy(alpha = 0.1f) // 10% de opacidad para el fondo
+    val txt = if (isActive) "Activo" else "Inactivo"
+
+    Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFF9F9F9))
+            .clip(RoundedCornerShape(50)) // Píldora redondeada
+            .background(bgColor)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center
     ) {
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFFF1F1F1))
-                .padding(12.dp)
-        ) {
-            Text("F. Entrada", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-            Text("Estado", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-        }
-
-        Divider()
-
-        items.forEachIndexed { index, item ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp)
-            ) {
-                Text(item.first, modifier = Modifier.weight(1f), color = TextGray)
-
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val color = if (item.second == "Activo") StatusGreen else Color.Gray
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(color)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(item.second, color = color)
-                }
-            }
-            if (index < items.lastIndex) Divider()
-        }
-    }
-}
-
-@Composable
-private fun StatusActionsTable(items: List<Pair<String, Boolean>>) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFF9F9F9))
-    ) {
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFFF1F1F1))
-                .padding(12.dp)
-        ) {
-            Text("Estado", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-            Text("Acciones", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-        }
-
-        Divider()
-
-        items.forEachIndexed { index, item ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                    val color = if (item.second) StatusGreen else Color.Gray
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(color)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (item.second) "Activo" else "Inactivo", color = color)
-                }
-
-                Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    IconButton(onClick = { /*editar*/ }) {
-                        Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFFFFA726))
-                    }
-                    IconButton(onClick = { /*eliminar*/ }) {
-                        Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFF44336))
-                    }
-                }
-            }
-            if (index < items.lastIndex) Divider()
-        }
+        Text(txt, color = baseColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }
