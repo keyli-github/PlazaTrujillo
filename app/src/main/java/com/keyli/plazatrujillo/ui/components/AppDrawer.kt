@@ -1,64 +1,42 @@
-//AppDrawer.kt
 package com.keyli.plazatrujillo.ui.components
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.keyli.plazatrujillo.R
 import com.keyli.plazatrujillo.ui.navigation.drawerOptions
 import com.keyli.plazatrujillo.ui.theme.OrangePrimary
 
 @Composable
 fun AppDrawer(
     currentRoute: String,
-    onNavigate: (String) -> Unit,
-    onCloseDrawer: () -> Unit
+    onNavigate: (String) -> Unit
 ) {
-    // Obtenemos los colores actuales del tema (ya sea claro u oscuro)
     val backgroundColor = MaterialTheme.colorScheme.surface
     val contentColor = MaterialTheme.colorScheme.onSurface
-    val selectedBgColor = OrangePrimary.copy(alpha = 0.15f) // Un poco más visible en oscuro
+    val selectedBgColor = OrangePrimary.copy(alpha = 0.15f)
 
     ModalDrawerSheet(
-        drawerContainerColor = backgroundColor, // Ahora usa el color del tema
+        drawerContainerColor = backgroundColor,
         drawerContentColor = contentColor,
         modifier = Modifier.width(300.dp)
     ) {
-        // Cabecera del Drawer (Logo)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 32.dp),
-            contentAlignment = Alignment.Center
-        ) {
-
-            Image(
-                painter = painterResource(id = R.drawable.logoo),
-                contentDescription = "Logo Plaza Trujillo",
-                modifier = Modifier.size(120.dp)
-            )
-        }
+        // Empujamos el contenido hacia abajo para que quede justo debajo del TopAppBar
+        Spacer(modifier = Modifier.height(56.dp)) // Ajusta si tu TopAppBar tiene otra altura
 
         Text(
             text = "MENU",
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, // Gris adaptable
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 24.dp, bottom = 16.dp)
         )
 
-        // Lista de Opciones
         drawerOptions.forEach { item ->
             val isSelected = currentRoute == item.route
 
@@ -73,21 +51,19 @@ fun AppDrawer(
                     Icon(
                         imageVector = item.icon,
                         contentDescription = item.title,
-                        // Si no está seleccionado, usa el color del texto del tema (blanco en dark mode)
                         tint = if (isSelected) OrangePrimary else contentColor.copy(alpha = 0.6f)
                     )
                 },
                 selected = isSelected,
                 onClick = {
+                    // Solo emitimos la navegación; el cierre lo hace NavigationWrapper
                     onNavigate(item.route)
-                    onCloseDrawer()
                 },
-                // Colores dinámicos
                 colors = NavigationDrawerItemDefaults.colors(
                     selectedContainerColor = selectedBgColor,
                     selectedTextColor = OrangePrimary,
                     unselectedContainerColor = Color.Transparent,
-                    unselectedTextColor = contentColor // Se adapta a blanco/negro
+                    unselectedTextColor = contentColor
                 ),
                 shape = RoundedCornerShape(topEnd = 32.dp, bottomEnd = 32.dp),
                 modifier = Modifier.padding(end = 16.dp)
@@ -96,12 +72,11 @@ fun AppDrawer(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // Tarjeta Inferior (Footer)
+        // Footer
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            // Usamos un color ligeramente diferente al fondo para que resalte
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
             ),
@@ -109,7 +84,7 @@ fun AppDrawer(
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
             ) {
                 Text(
                     text = "Hotel Plaza Trujillo",
@@ -117,13 +92,14 @@ fun AppDrawer(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
+
                     text = "Sistema de Gestión",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
-                    onClick = { onNavigate("dashboard"); onCloseDrawer() },
+                    onClick = { onNavigate("dashboard") },
                     colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
                     modifier = Modifier.fillMaxWidth()
                 ) {

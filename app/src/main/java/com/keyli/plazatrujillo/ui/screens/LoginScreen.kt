@@ -1,5 +1,7 @@
 package com.keyli.plazatrujillo.ui.screens
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -27,24 +29,111 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.keyli.plazatrujillo.R
+import com.keyli.plazatrujillo.ui.theme.LightBackground
 import com.keyli.plazatrujillo.ui.theme.OrangePrimary
 import com.keyli.plazatrujillo.ui.theme.PlazaTrujilloTheme
+import kotlinx.coroutines.delay
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(onLoginSuccess: () -> Unit) {
+    // Estado para controlar si la app está "Iniciando" (Splash) o lista
+    var isAppReady by remember { mutableStateOf(false) }
+
+    // Simular carga inicial del sistema (2.5 segundos)
+    LaunchedEffect(Unit) {
+        delay(2500) // Tiempo que dura la ruedita al entrar
+        isAppReady = true
+    }
+
+    // Animación suave entre la Pantalla de Carga y el Login
+    Crossfade(
+        targetState = isAppReady,
+        animationSpec = tween(1000), // La transición dura 1 segundo suave
+        label = "LoginTransition"
+    ) { ready ->
+        if (!ready) {
+            // PANTALLA 1: LOADING INICIAL (Splash)
+            InitialLoadingScreen()
+        } else {
+            // PANTALLA 2: FORMULARIO DE LOGIN (Tu diseño original)
+            LoginFormContent(onLoginSuccess)
+        }
+    }
+}
+
+// --- COMPONENTE: PANTALLA DE CARGA (INTERACTIVO) ---
+@Composable
+fun InitialLoadingScreen() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White), // Fondo limpio
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            // Logo Grande
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = "Logo",
+                modifier = Modifier.size(120.dp),
+                contentScale = ContentScale.Fit
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Ruedita Interactiva (Color Naranja)
+            CircularProgressIndicator(
+                color = OrangePrimary,
+                modifier = Modifier.size(48.dp),
+                strokeWidth = 4.dp
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Texto de estado
+            Text(
+                text = "Cargando sistema...",
+                color = Color.Gray,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        // Copyright abajo del todo
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = 32.dp),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Text(
+                text = "Hotel Plaza Trujillo",
+                color = OrangePrimary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+// --- COMPONENTE: TU LOGIN ORIGINAL (Refactorizado para limpieza) ---
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LoginFormContent(onLoginSuccess: () -> Unit) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var rememberMe by remember { mutableStateOf(false) }
 
-    // Contenedor Principal
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
+            .background(LightBackground)
     ) {
-        // 1. Fondo Naranja Superior
+        // Fondo Naranja Superior
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -55,7 +144,6 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 )
         )
 
-        // Contenido Vertical
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -64,7 +152,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
         ) {
             Spacer(modifier = Modifier.height(40.dp))
 
-            // 2. Logo Circular
+            // Logo Circular
             Surface(
                 modifier = Modifier.size(100.dp),
                 shape = CircleShape,
@@ -72,7 +160,6 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 shadowElevation = 8.dp
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    // Si tienes el logo, usa esta línea:
                     Image(
                         painter = painterResource(id = R.drawable.logo),
                         contentDescription = "Logo Hotel",
@@ -86,7 +173,6 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Texto "Hotel Plaza Trujillo"
             Text(
                 text = "Hotel Plaza Trujillo",
                 color = Color.White,
@@ -96,7 +182,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 3. Tarjeta Blanca de Login
+            // Tarjeta de Login
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -126,7 +212,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                         modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
                     )
 
-                    // Campo: Correo
+                    // Email
                     Text(
                         text = "Correo Electrónico",
                         fontSize = 14.sp,
@@ -153,7 +239,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Campo: Contraseña
+                    // Password
                     Text(
                         text = "Contraseña",
                         fontSize = 14.sp,
@@ -170,7 +256,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Icon(
                                     imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                    contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña",
+                                    contentDescription = null,
                                     tint = if (passwordVisible) OrangePrimary else Color.Gray
                                 )
                             }
@@ -187,7 +273,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                         )
                     )
 
-                    // Checkbox y Olvidé clave
+                    // Checkbox
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -201,15 +287,14 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                             )
                             Text("Recordarme", fontSize = 14.sp, color = Color.Gray)
                         }
-
-                        TextButton(onClick = { /* Acción recuperar */ }) {
+                        TextButton(onClick = { }) {
                             Text("Olvidé mi clave", fontSize = 14.sp, color = OrangePrimary, fontWeight = FontWeight.Bold)
                         }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Botón Iniciar Sesión
+                    // Botón
                     Button(
                         onClick = onLoginSuccess,
                         modifier = Modifier
@@ -232,30 +317,17 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
 
             // Footer
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "Hotel Plaza Trujillo © 2025",
-                    fontSize = 12.sp,
-                    color = Color.Gray,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "Panel Administrativo v1.0",
-                    fontSize = 12.sp,
-                    color = Color.LightGray
-                )
+                Text("Hotel Plaza Trujillo © 2025", fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                Text("Panel Administrativo v1.0", fontSize = 12.sp, color = Color.LightGray)
             }
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
 
-// ==========================================
-// PREVIEW CORREGIDO
-// ==========================================
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun LoginScreenPreview() {
-    // AHORA PASAMOS darkTheme = false
     PlazaTrujilloTheme(darkTheme = false) {
         LoginScreen(onLoginSuccess = {})
     }

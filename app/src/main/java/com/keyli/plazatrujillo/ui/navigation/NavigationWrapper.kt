@@ -1,8 +1,7 @@
 package com.keyli.plazatrujillo.ui.navigation
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -10,34 +9,23 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.*
 import com.keyli.plazatrujillo.R
 import com.keyli.plazatrujillo.ui.components.AppDrawer
-import com.keyli.plazatrujillo.ui.screens.CajaScreen
-import com.keyli.plazatrujillo.ui.screens.ChatBotScreen
-import com.keyli.plazatrujillo.ui.screens.DashboardScreen
-import com.keyli.plazatrujillo.ui.screens.LoginScreen
-import com.keyli.plazatrujillo.ui.screens.MantenimientoScreen
-import com.keyli.plazatrujillo.ui.screens.MensajeScreen
-import com.keyli.plazatrujillo.ui.screens.ProfileScreen
-import com.keyli.plazatrujillo.ui.screens.UsuarioScreen
+import com.keyli.plazatrujillo.ui.screens.*
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-
 fun NavigationWrapper(
-    isDarkTheme: Boolean,      // 1. AÑADIDO: Recibe el estado del tema
-    onToggleTheme: () -> Unit  // 2. AÑADIDO: Recibe la función para cambiar
+    isDarkTheme: Boolean,
+    onToggleTheme: () -> Unit
 ) {
+
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -45,16 +33,74 @@ fun NavigationWrapper(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: "login"
 
-    val showBars = currentRoute != "login" && currentRoute != "profile"
+    val showBars = currentRoute != "login" &&
+            currentRoute != "profile" &&
+            currentRoute != "new_reservation" &&
+            currentRoute != "new_movement" &&
+            currentRoute != "new_comanda"
 
-    // Adaptamos el color de la barra según el tema que recibimos
-    val topBarContainerColor = if (isDarkTheme) Color(0xFF1E1E1E) else Color.White
-    val topBarContentColor = if (isDarkTheme) Color.White else Color.Black
+    // cerrar drawer siempre al cambiar de ruta
+    LaunchedEffect(currentRoute) {
+        if (drawerState.isOpen) drawerState.close()
+    }
 
-    Scaffold(
-        topBar = {
-            if (showBars) {
+    // ========================
+    // CONTENIDO DE NAVEGACIÓN
+    // ========================
+    val content: @Composable (PaddingValues) -> Unit = { paddingValues ->
+
+        NavHost(
+            navController = navController,
+            startDestination = "login",
+            modifier = Modifier.padding(paddingValues)
+        ) {
+
+            composable("login") {
+                LoginScreen(
+                    onLoginSuccess = {
+                        scope.launch {
+                            drawerState.snapTo(DrawerValue.Closed)
+                        }
+                        navController.navigate("dashboard") {
+                            popUpTo("login") { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            composable("dashboard") {
+                DashboardScreen(
+                    navController = navController,
+                    isDarkTheme = isDarkTheme,
+                    onToggleTheme = onToggleTheme
+                )
+            }
+
+            composable("usuarios") { UsuarioScreen(navController) }
+            composable("reservas") { ReservaScreen(navController) }
+            composable("new_reservation") { NewReservationScreen(navController) }
+            composable("new_movement") { NewMovementScreen(navController) }
+            composable("new_comanda") { ComandaScreen(navController) }
+            composable("caja") { CajaScreen(navController) }
+            composable("lavanderia") { LavanderiaScreen(navController) }
+            composable("mantenimiento") { MantenimientoScreen(navController) }
+            composable("mensajes") { MensajeScreen(navController) }
+            composable("chatbot") { ChatBotScreen(navController) }
+
+        }
+    }
+
+    // ========================
+    // UI PRINCIPAL
+    // ========================
+
+    if (showBars) {
+
+        Scaffold(
+            topBar = {
+
                 CenterAlignedTopAppBar(
+
                     title = {
                         Image(
                             painter = painterResource(id = R.drawable.logoo),
@@ -62,118 +108,72 @@ fun NavigationWrapper(
                             modifier = Modifier.height(40.dp)
                         )
                     },
+
                     navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(
-                                imageVector = Icons.Default.Menu,
-                                contentDescription = "Menú",
-                                tint = topBarContentColor
-                            )
+                        IconButton(
+                            onClick = {
+                                scope.launch {
+                                    drawerState.open()
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.Menu, contentDescription = "Menú")
                         }
                     },
+
                     actions = {
-                        IconButton(onClick = { }) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "Opciones",
-                                tint = topBarContentColor
-                            )
+                        IconButton(onClick = {}) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Opciones")
                         }
                     },
+
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = topBarContainerColor
+                        containerColor = Color.White,
+                        titleContentColor = Color.Black,
+                        navigationIconContentColor = Color.Black,
+                        actionIconContentColor = Color.Black
                     )
                 )
-            }
-        }
-    ) { paddingValues ->
 
-        ModalNavigationDrawer(
-            modifier = Modifier.padding(paddingValues),
-            drawerState = drawerState,
-            gesturesEnabled = showBars,
-            scrimColor = Color.Black.copy(alpha = 0.5f),
-            drawerContent = {
-                if (showBars) {
+            }
+        ) { padding ->
+
+            ModalNavigationDrawer(
+
+                drawerState = drawerState,
+                gesturesEnabled = drawerState.isOpen,
+                scrimColor = Color.Black.copy(alpha = 0.4f),
+
+                drawerContent = {
+
                     AppDrawer(
                         currentRoute = currentRoute,
                         onNavigate = { route ->
-                            navController.navigate(route) {
-                                popUpTo("dashboard") { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        onCloseDrawer = { scope.launch { drawerState.close() } }
-                    )
-                }
-            }
-        ) {
-            NavHost(
-                navController = navController,
-                startDestination = "login"
-            ) {
-                composable("login") {
-                    LoginScreen(
-                        onLoginSuccess = {
-                            navController.navigate("dashboard") {
-                                popUpTo("login") { inclusive = true }
+                            scope.launch {
+
+                                drawerState.close()
+
+                                navController.navigate(route) {
+                                    popUpTo("dashboard") { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
                             }
                         }
                     )
                 }
 
-                composable("dashboard") {
-                    // 3. SOLUCIÓN DEL ERROR: Pasamos los parámetros aquí
-                    DashboardScreen(
-                        navController = navController,
-                        isDarkTheme = isDarkTheme,
-                        onToggleTheme = onToggleTheme
-                    )
-                }
+            ) {
 
-                composable("profile") {
-                    ProfileScreen(navController = navController)
-                }
-
-                composable("usuarios") {
-                    UsuarioScreen(navController = navController) // Llamada a la pantalla real
-                }
-
-                composable("mantenimiento") {
-                    MantenimientoScreen(navController = navController) // Llamada a la pantalla real
-                }
-
-                composable("chatbot") {
-                    ChatBotScreen(navController = navController) // Llamada a la pantalla real
-                }
-
-                composable("mensajes") {
-                    MensajeScreen(navController = navController) // Llamada a la pantalla real
-                }
-                composable("caja") {
-                    CajaScreen(navController = navController)
-                }
-
-
-                composable("reservas") {
-                    ScreenPlaceholder("Reservas") }
-
-                composable("caja") {
-                    CajaScreen(navController = navController) }
-                composable("lavanderia") { ScreenPlaceholder("Lavandería") }
+                content(padding)
 
             }
         }
-    }
-}
 
-@Composable
-fun ScreenPlaceholder(title: String) {
-    Box(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(text = "Pantalla de $title", style = MaterialTheme.typography.headlineMedium)
+    } else {
+
+        // Login sin Drawer ni AppBar
+        content(PaddingValues())
+
     }
 }

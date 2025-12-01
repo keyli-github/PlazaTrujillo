@@ -1,5 +1,7 @@
 package com.keyli.plazatrujillo.ui.screens
 
+
+import androidx.navigation.NavHostController
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -23,7 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.keyli.plazatrujillo.ui.theme.*
 
 @Composable
-fun UsuarioScreen() {
+fun UsuarioScreen(navController: NavHostController) {
 
     var search by remember { mutableStateOf("") }
     val scrollState = rememberScrollState()

@@ -1,5 +1,7 @@
+
 package com.keyli.plazatrujillo.ui.theme
 
+// Importar otras dependencias como dp, sp, etc.
 import androidx.compose.ui.graphics.Color
 
 // --- COLORES PRINCIPALES (NARANJA) ---
@@ -13,7 +15,6 @@ val TextBlack = Color(0xFF212121)       // Negro suave
 val TextGray = Color(0xFF757575)        // Gris texto secundario
 
 // --- COLORES PARA MODO OSCURO (DARK) ---
-// ¡ESTOS SON LOS QUE TE FALTAN!
 val DarkBackground = Color(0xFF121212)  // Negro profundo
 val DarkSurface = Color(0xFF1E1E1E)     // Gris oscuro para tarjetas
 val TextWhite = Color(0xFFFFFFFF)       // Texto blanco
@@ -23,3 +24,11 @@ val StatusGreen = Color(0xFF4CAF50)     // Éxito
 val StatusRed = Color(0xFFF44336)       // Error
 val StatusBlue = Color(0xFF2196F3)      // Info
 val StatusPurple = Color(0xFF9C27B0)    // Lavandería
+
+// Paleta extra usada en dashboards
+val PiePurple = Color(0xFF673AB7)
+val PieGreen = Color(0xFF4CAF50)
+val PieBlue = Color(0xFF2196F3)
+val PieOrange = Color(0xFFFF5722)
+
+
