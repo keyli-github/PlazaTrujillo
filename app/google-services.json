@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "96496613829",
+    "project_id": "hotel-plaza-trujillo-8e076",
+    "storage_bucket": "hotel-plaza-trujillo-8e076.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:96496613829:android:8851d4e054586ba8d2b3ac",
+        "android_client_info": {
+          "package_name": "com.keyli.plazatrujillo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAsQCUUVTXQQTgXWguYgC71ah_ZrPdLObE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

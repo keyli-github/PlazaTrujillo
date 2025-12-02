@@ -20,7 +20,6 @@ import com.keyli.plazatrujillo.ui.screens.*
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
-
 @Composable
 fun NavigationWrapper(
     isDarkTheme: Boolean,
@@ -33,41 +32,27 @@ fun NavigationWrapper(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: "login"
 
-    // --- LISTA DE PANTALLAS FULL SCREEN (Sin Barra Superior ni Menú Lateral) ---
-    // Agrega aquí cualquier pantalla que deba ocupar todo el celular sin el logo arriba.
+    // 1. AGREGA "recovery" AQUI PARA QUE NO SALGA EL MENÚ
     val fullScreenRoutes = listOf(
-        "login",
-        "new_reservation",
-        "new_reservation_screen",
-        "new_movement",
-        "new_comanda",
-        "new_usuario",
-        "register_briquetas", // Formulario Briquetas
-        "bloq_habitacion",    // Formulario Bloqueo
-        "report_incidencias"  // Formulario Incidencias
+        "login", "recovery", "new_reservation", "new_reservation_screen", "new_movement",
+        "new_comanda", "new_usuario", "register_briquetas", "bloq_habitacion",
+        "report_incidencias", "profile",
     )
 
-    // Si la ruta actual NO está en la lista, mostramos las barras
     val showBars = currentRoute !in fullScreenRoutes
 
-    // Cerrar el drawer automáticamente al cambiar de pantalla
     LaunchedEffect(currentRoute) {
         if (drawerState.isOpen) drawerState.close()
     }
 
-    // ========================
-    // CONTENIDO DE NAVEGACIÓN
-    // ========================
     val content: @Composable (PaddingValues) -> Unit = { paddingValues ->
-
         NavHost(
             navController = navController,
             startDestination = "login",
-            // IMPORTANTE: Este padding es lo que hace que el ChatBot quede
-            // EXACTAMENTE debajo del logo, sin dejar huecos raros ni superponerse.
             modifier = Modifier.padding(paddingValues)
         ) {
-            // --- LOGIN & DASHBOARD ---
+
+            // --- LOGIN (ACTUALIZADO) ---
             composable("login") {
                 LoginScreen(
                     onLoginSuccess = {
@@ -75,71 +60,75 @@ fun NavigationWrapper(
                         navController.navigate("dashboard") {
                             popUpTo("login") { inclusive = true }
                         }
+                    },
+                    // 2. NUEVO PARAMETRO DE NAVEGACIÓN
+                    onNavigateToRecovery = {
+                        navController.navigate("recovery")
                     }
                 )
             }
+
+            // --- RECUPERAR CONTRASEÑA (NUEVO) ---
+            composable("recovery") {
+                RecupContraseña(
+                    onNavigateToLogin = {
+                        navController.popBackStack() // Regresa al Login
+                    }
+                )
+            }
+
+            // --- DASHBOARD ---
             composable("dashboard") {
                 DashboardScreen(navController, isDarkTheme, onToggleTheme)
             }
 
-            // --- PANTALLAS PRINCIPALES ---
+            // --- RESTO DE PANTALLAS ---
             composable("profile") { ProfileScreen(navController) }
             composable("usuarios") { UsuarioScreen(navController) }
             composable("reservas") { ReservaScreen(navController) }
             composable("caja") { CajaScreen(navController) }
             composable("lavanderia") { LavanderiaScreen(navController) }
             composable("comanda_screen") { ComandaScreen(navController) }
-
-            // --- FORMULARIOS (Full Screen) ---
             composable("new_usuario") { NewUsuario(navController) }
             composable("new_reservation") { NewReservationScreen(navController) }
-
-            // --- MANTENIMIENTO ---
             composable("mantenimiento") { MantenimientoScreen(navController) }
             composable("register_briquetas") { RegisterBriquetasScreen(navController) }
             composable("bloq_habitacion") { BloqHabitacionScreen(navController) }
             composable("report_incidencias") { ReportIncidenciasScreen(navController) }
-
-            // --- COMUNICACIÓN ---
-            // NOTA: Como NO están en 'fullScreenRoutes', mostrarán el Logo arriba.
             composable("mensajes") { MensajeScreen(navController) }
             composable("chatbot") { ChatBotScreen(navController) }
         }
     }
 
-    // ========================
-    // ESTRUCTURA VISUAL (SCAFFOLD)
-    // ========================
-
     if (showBars) {
         Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
                         Image(
                             painter = painterResource(id = R.drawable.logoo),
                             contentDescription = "Logo",
-                            modifier = Modifier.height(40.dp) // Altura controlada del logo
+                            modifier = Modifier.height(40.dp),
                         )
                     },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menú", tint = Color.Black)
+                            Icon(Icons.Default.Menu, contentDescription = "Menú", tint = MaterialTheme.colorScheme.onSurface)
                         }
                     },
                     actions = {
                         IconButton(onClick = {}) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Opciones", tint = Color.Black)
+                            Icon(Icons.Default.MoreVert, contentDescription = "Opciones", tint = MaterialTheme.colorScheme.onSurface)
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.White, // Fondo blanco para integrarse con el diseño
-                        scrolledContainerColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        scrolledContainerColor = MaterialTheme.colorScheme.surface
                     )
                 )
             }
         ) { padding ->
-            // Menú Lateral (Drawer)
             ModalNavigationDrawer(
                 drawerState = drawerState,
                 gesturesEnabled = drawerState.isOpen,
@@ -160,12 +149,10 @@ fun NavigationWrapper(
                     )
                 }
             ) {
-                // Aquí pasamos el padding al NavHost
                 content(padding)
             }
         }
     } else {
-        // Pantallas Pantalla Completa (Login, Formularios)
         content(PaddingValues(0.dp))
     }
 }

@@ -18,7 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.DateRange // Usado como alternativa a calculadora
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
@@ -26,8 +26,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -49,26 +50,31 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.keyli.plazatrujillo.ui.theme.OrangePrimary
+import com.keyli.plazatrujillo.ui.theme.StatusGreen
+import com.keyli.plazatrujillo.ui.theme.StatusRed
 
-// --- COLORES DEFINIDOS LOCALMENTE ---
-val LightBackground = Color(0xFFF8F9FA)
-val LightSurface = Color(0xFFFFFFFF)
-val TextBlack = Color(0xFF1F2937)
-val TextGray = Color(0xFF6B7280)
-val OrangePrimary = Color(0xFFFF6B00)
-val OrangeSecondary = Color(0xFFFFA04D)
-val StatusGreen = Color(0xFF10B981)
-val StatusRed = Color(0xFFEF4444)
+// Nota: OrangePrimary, StatusGreen y StatusRed vienen de tu archivo Color.kt
+// Si no los tienes importados, descomenta las siguientes líneas:
+// val OrangePrimary = Color(0xFFFF6B00)
+// val StatusGreen = Color(0xFF10B981)
+// val StatusRed = Color(0xFFEF4444)
 
 @Composable
 fun MantenimientoScreen(navController: NavHostController) {
+    // --- COLORES DINÁMICOS DEL TEMA ---
+    val bgColor = MaterialTheme.colorScheme.background
+    val textColor = MaterialTheme.colorScheme.onBackground
+    val subTextColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant
+
     // Estado para controlar la pestaña seleccionada
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Sistema Agua Caliente", "Historial Briquetas", "Incidencias", "Habitaciones Bloqueadas")
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = LightBackground
+        color = bgColor // Fondo global dinámico
     ) {
         Column(
             modifier = Modifier.fillMaxSize()
@@ -77,13 +83,13 @@ fun MantenimientoScreen(navController: NavHostController) {
             Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 8.dp)) {
                 Text(
                     text = "Mantenimiento Técnico",
-                    color = TextBlack,
+                    color = textColor,
                     fontSize = 26.sp,
                     fontWeight = FontWeight.ExtraBold
                 )
                 Text(
                     text = "Gestión del sistema de agua caliente y mantenimiento de habitaciones",
-                    color = TextGray,
+                    color = subTextColor,
                     fontSize = 14.sp
                 )
             }
@@ -91,7 +97,7 @@ fun MantenimientoScreen(navController: NavHostController) {
             // --- TABS ---
             ScrollableTabRow(
                 selectedTabIndex = selectedTabIndex,
-                containerColor = LightBackground,
+                containerColor = bgColor, // Fondo de tabs dinámico
                 contentColor = OrangePrimary,
                 edgePadding = 16.dp,
                 indicator = { tabPositions ->
@@ -103,17 +109,18 @@ fun MantenimientoScreen(navController: NavHostController) {
                         )
                     }
                 },
-                divider = { Divider(color = TextGray.copy(alpha = 0.1f)) }
+                divider = { HorizontalDivider(color = dividerColor) }
             ) {
                 tabs.forEachIndexed { index, title ->
+                    val isSelected = selectedTabIndex == index
                     Tab(
-                        selected = selectedTabIndex == index,
+                        selected = isSelected,
                         onClick = { selectedTabIndex = index },
                         text = {
                             Text(
                                 text = title,
-                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
-                                color = if (selectedTabIndex == index) OrangePrimary else TextGray
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) OrangePrimary else subTextColor
                             )
                         }
                     )
@@ -138,33 +145,33 @@ fun MantenimientoScreen(navController: NavHostController) {
 }
 
 // ------------------------------------------------------------------------
-// TAB 1: SISTEMA AGUA CALIENTE (DISEÑO CUADRÍCULA 2x2)
+// TAB 1: SISTEMA AGUA CALIENTE
 // ------------------------------------------------------------------------
 @Composable
 fun TabAguaCaliente(navController: NavHostController) {
+    val textColor = MaterialTheme.colorScheme.onBackground
+
     Column(modifier = Modifier.fillMaxSize()) {
 
-        // --- FILA 1 (Verde y Naranja) ---
+        // --- FILA 1 ---
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Tarjeta 1: Estado (Verde)
             StatusCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.CheckCircle,
-                iconBgColor = Color(0xFFDCFCE7), // Verde pastel
-                iconColor = Color(0xFF16A34A),   // Verde fuerte
+                iconBgColor = Color(0xFFDCFCE7), // Mantenemos colores pastel en iconos
+                iconColor = Color(0xFF16A34A),
                 title = "Estado Operativo",
                 value = "Operativo"
             )
 
-            // Tarjeta 2: Briquetas (Naranja)
             StatusCard(
                 modifier = Modifier.weight(1f),
-                icon = Icons.Default.DateRange, // Icono calendario/calculadora
-                iconBgColor = Color(0xFFFFEDD5), // Naranja pastel
-                iconColor = Color(0xFFEA580C),   // Naranja fuerte
+                icon = Icons.Default.DateRange,
+                iconBgColor = Color(0xFFFFEDD5),
+                iconColor = Color(0xFFEA580C),
                 title = "Briquetas Este Mes",
                 value = "0 Unid."
             )
@@ -172,27 +179,25 @@ fun TabAguaCaliente(navController: NavHostController) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // --- FILA 2 (Azul y Morado) ---
+        // --- FILA 2 ---
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Tarjeta 3: Último Cambio (Azul)
             StatusCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.AccessTime,
-                iconBgColor = Color(0xFFDBEAFE), // Azul pastel
-                iconColor = Color(0xFF2563EB),   // Azul fuerte
+                iconBgColor = Color(0xFFDBEAFE),
+                iconColor = Color(0xFF2563EB),
                 title = "Último Cambio",
                 value = "No registrado"
             )
 
-            // Tarjeta 4: Próximo Cambio (Morado)
             StatusCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.Schedule,
-                iconBgColor = Color(0xFFF3E8FF), // Morado pastel
-                iconColor = Color(0xFF9333EA),   // Morado fuerte
+                iconBgColor = Color(0xFFF3E8FF),
+                iconColor = Color(0xFF9333EA),
                 title = "Próximo Cambio",
                 value = "No programado"
             )
@@ -201,7 +206,7 @@ fun TabAguaCaliente(navController: NavHostController) {
         Spacer(modifier = Modifier.height(24.dp))
 
         // --- BOTONES DE ACCIÓN ---
-        Text(text = "Acciones Rápidas", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextBlack)
+        Text(text = "Acciones Rápidas", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = textColor)
         Spacer(modifier = Modifier.height(12.dp))
 
         Button(
@@ -214,7 +219,7 @@ fun TabAguaCaliente(navController: NavHostController) {
         ) {
             Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = Color.White)
             Spacer(Modifier.width(8.dp))
-            Text("Registrar Cambio Briquetas", fontSize = 16.sp)
+            Text("Registrar Cambio Briquetas", fontSize = 16.sp, color = Color.White)
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -225,7 +230,7 @@ fun TabAguaCaliente(navController: NavHostController) {
                 modifier = Modifier
                     .weight(1f)
                     .height(50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF475569)),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Icon(
@@ -235,7 +240,7 @@ fun TabAguaCaliente(navController: NavHostController) {
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(6.dp))
-                Text("Bloquear Hab.", fontSize = 14.sp)
+                Text("Bloquear Hab.", fontSize = 14.sp, color = Color.White)
             }
 
             Button(
@@ -253,39 +258,45 @@ fun TabAguaCaliente(navController: NavHostController) {
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(6.dp))
-                Text("Reportar Incidencia", fontSize = 12.sp)
+                Text("Reportar Incidencia", fontSize = 12.sp, color = Color.White)
             }
         }
     }
 }
 
 // ------------------------------------------------------------------------
-// STATUS CARD (COMPONENTE REUTILIZABLE CON ESTILO PROFESIONAL)
+// STATUS CARD (DINÁMICO)
 // ------------------------------------------------------------------------
 @Composable
 fun StatusCard(
     modifier: Modifier = Modifier,
     icon: ImageVector,
-    iconBgColor: Color, // Color de fondo pastel
-    iconColor: Color,   // Color fuerte del icono
+    iconBgColor: Color,
+    iconColor: Color,
     title: String,
     value: String
 ) {
+    // Colores de la tarjeta adaptables
+    val cardColor = MaterialTheme.colorScheme.surface
+    val textColor = MaterialTheme.colorScheme.onSurface
+    val subTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
+
     Card(
-        modifier = modifier.height(145.dp), // Altura fija uniforme
+        modifier = modifier.height(145.dp),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = LightSurface),
-        border = BorderStroke(1.dp, TextGray.copy(alpha = 0.15f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
+        colors = CardDefaults.cardColors(containerColor = cardColor),
+        border = BorderStroke(1.dp, borderColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween,
-            horizontalAlignment = Alignment.Start // Alineado a la izquierda
+            horizontalAlignment = Alignment.Start
         ) {
-            // Icono con fondo cuadrado redondeado (Pastel)
+            // Icono con fondo cuadrado redondeado
             Box(
                 modifier = Modifier
                     .size(42.dp)
@@ -305,7 +316,7 @@ fun StatusCard(
                 Text(
                     text = title,
                     fontSize = 13.sp,
-                    color = TextGray,
+                    color = subTextColor,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -315,7 +326,7 @@ fun StatusCard(
                     text = value,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF111827), // Negro oscuro
+                    color = textColor, // Se vuelve blanco en modo oscuro
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -325,7 +336,7 @@ fun StatusCard(
 }
 
 // ------------------------------------------------------------------------
-// TAB 2: HISTORIAL BRIQUETAS (TABLA)
+// TABS AUXILIARES (TABLAS)
 // ------------------------------------------------------------------------
 @Composable
 fun TabHistorialBriquetas() {
@@ -337,9 +348,6 @@ fun TabHistorialBriquetas() {
     }
 }
 
-// ------------------------------------------------------------------------
-// TAB 3: INCIDENCIAS (TABLA)
-// ------------------------------------------------------------------------
 @Composable
 fun TabIncidencias() {
     val headers = listOf(
@@ -355,9 +363,6 @@ fun TabIncidencias() {
     }
 }
 
-// ------------------------------------------------------------------------
-// TAB 4: HABITACIONES BLOQUEADAS (TABLA)
-// ------------------------------------------------------------------------
 @Composable
 fun TabHabitacionesBloqueadas() {
     val headers = listOf(
@@ -374,15 +379,19 @@ fun TabHabitacionesBloqueadas() {
 }
 
 // ------------------------------------------------------------------------
-// COMPONENTES AUXILIARES
+// COMPONENTES AUXILIARES ADAPTABLES
 // ------------------------------------------------------------------------
 
 @Composable
 fun TableHeader(headers: List<Pair<String, Float>>) {
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val textColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(LightSurface)
+            .background(surfaceColor)
             .padding(vertical = 12.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -390,7 +399,7 @@ fun TableHeader(headers: List<Pair<String, Float>>) {
             Text(
                 text = title,
                 modifier = Modifier.weight(weight),
-                color = TextGray,
+                color = textColor,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -398,11 +407,13 @@ fun TableHeader(headers: List<Pair<String, Float>>) {
             )
         }
     }
-    Divider(color = TextGray.copy(alpha = 0.1f))
+    HorizontalDivider(color = dividerColor)
 }
 
 @Composable
 fun EmptyStateMessage(message: String) {
+    val textColor = MaterialTheme.colorScheme.onSurfaceVariant
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -411,7 +422,7 @@ fun EmptyStateMessage(message: String) {
     ) {
         Text(
             text = message,
-            color = TextGray,
+            color = textColor,
             fontSize = 14.sp,
             textAlign = TextAlign.Center
         )

@@ -3,6 +3,7 @@ package com.keyli.plazatrujillo.ui.screens
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -41,6 +42,12 @@ data class ChatMessage(
 fun ChatBotScreen(navController: NavHostController) {
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+
+    // --- COLORES DINÁMICOS ---
+    val bgColor = MaterialTheme.colorScheme.background
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val textColor = MaterialTheme.colorScheme.onSurface
+    val borderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f) // Borde sutil adaptable
 
     val messages = remember { mutableStateListOf<ChatMessage>() }
     var isBotTyping by remember { mutableStateOf(false) }
@@ -101,14 +108,15 @@ fun ChatBotScreen(navController: NavHostController) {
     }
 
     Scaffold(
-        containerColor = LightBackground,
+        containerColor = bgColor, // CAMBIO 1: Fondo dinámico
         bottomBar = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(LightBackground)
+                    .background(bgColor) // CAMBIO 2: Fondo detrás de sugerencias
                     .imePadding()
             ) {
+                // SUGERENCIAS
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -117,21 +125,22 @@ fun ChatBotScreen(navController: NavHostController) {
                         Surface(
                             onClick = { scope.launch { processMessage(question) } },
                             shape = RoundedCornerShape(16.dp),
-                            color = Color.White,
+                            color = surfaceColor, // CAMBIO 3: Color de tarjeta de sugerencia
                             border = BorderStroke(1.dp, OrangePrimary.copy(alpha = 0.5f))
                         ) {
                             Text(
                                 text = question,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                color = TextBlack,
+                                color = textColor, // CAMBIO 4: Texto visible en oscuro
                                 fontSize = 13.sp
                             )
                         }
                     }
                 }
 
+                // INPUT DE TEXTO
                 Surface(
-                    color = Color.White,
+                    color = surfaceColor, // CAMBIO 5: Fondo del área de input
                     shadowElevation = 12.dp,
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                 ) {
@@ -144,16 +153,18 @@ fun ChatBotScreen(navController: NavHostController) {
                         OutlinedTextField(
                             value = input,
                             onValueChange = { input = it },
-                            placeholder = { Text("Escribe una consulta...", color = TextGray) },
+                            placeholder = { Text("Escribe una consulta...", color = textColor.copy(alpha = 0.5f)) },
                             modifier = Modifier
                                 .weight(1f)
                                 .height(52.dp),
                             shape = RoundedCornerShape(26.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = OrangePrimary,
-                                unfocusedBorderColor = TextGray.copy(alpha = 0.3f),
-                                focusedContainerColor = LightBackground,
-                                unfocusedContainerColor = LightBackground
+                                unfocusedBorderColor = textColor.copy(alpha = 0.3f),
+                                focusedContainerColor = bgColor, // CAMBIO 6: Fondo del input
+                                unfocusedContainerColor = bgColor,
+                                focusedTextColor = textColor, // IMPORTANTE: Texto que escribes
+                                unfocusedTextColor = textColor
                             ),
                             singleLine = true
                         )
@@ -179,15 +190,13 @@ fun ChatBotScreen(navController: NavHostController) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = innerPadding.calculateBottomPadding())
-            // AQUI ESTABA EL ERROR: NO AGREGAMOS PADDING ARRIBA
         ) {
-            // HEADER DEL ASISTENTE (PEGADO ARRIBA)
-            // Le quité el 'statusBarsPadding' y le puse un borde inferior sutil
+            // HEADER DEL ASISTENTE
             Surface(
-                color = Color.White,
-                shadowElevation = 2.dp, // Sombra pequeña para separar del contenido
+                color = surfaceColor, // CAMBIO 7: Header dinámico
+                shadowElevation = 2.dp,
                 modifier = Modifier.fillMaxWidth(),
-                border = BorderStroke(1.dp, Color(0xFFEEEEEE)) // Borde sutil abajo
+                border = BorderStroke(1.dp, borderColor) // CAMBIO 8: Borde sutil
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -204,7 +213,7 @@ fun ChatBotScreen(navController: NavHostController) {
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
-                        Text("Asistente IA", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextBlack)
+                        Text("Asistente IA", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = textColor)
                         Text(
                             text = if (isBotTyping) "Escribiendo..." else "En línea",
                             color = if (isBotTyping) OrangePrimary else StatusGreen,
@@ -239,8 +248,12 @@ fun ChatBotScreen(navController: NavHostController) {
 @Composable
 fun ChatBubble(message: ChatMessage) {
     val isUser = message.isUser
-    val bubbleColor = if (isUser) OrangePrimary else Color.White
-    val textColor = if (isUser) Color.White else TextBlack
+
+    // CAMBIO 9: Lógica de colores para burbujas
+    // Si es Bot: Usamos 'surfaceVariant' (un gris ligeramente distinto al fondo) para que resalte en modo oscuro
+    val bubbleColor = if (isUser) OrangePrimary else MaterialTheme.colorScheme.surfaceVariant
+    val textColor = if (isUser) Color.White else MaterialTheme.colorScheme.onSurface
+
     val align = if (isUser) Alignment.CenterEnd else Alignment.CenterStart
     val shape = if (isUser) RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp) else RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp)
 
@@ -250,12 +263,18 @@ fun ChatBubble(message: ChatMessage) {
                 Icon(Icons.Default.AutoAwesome, null, tint = OrangePrimary, modifier = Modifier.size(24.dp).padding(bottom = 4.dp))
                 Spacer(modifier = Modifier.width(8.dp))
             }
-            Surface(color = bubbleColor, shape = shape, shadowElevation = 2.dp, border = if(!isUser) BorderStroke(1.dp, Color(0xFFEEEEEE)) else null) {
+            Surface(
+                color = bubbleColor,
+                shape = shape,
+                shadowElevation = 1.dp, // Bajamos la elevación en dark mode se ve mejor sutil
+                // En dark mode no necesitamos borde gris feo, el surfaceVariant ya hace contraste
+                border = null
+            ) {
                 Text(text = message.text, color = textColor, modifier = Modifier.padding(14.dp), fontSize = 15.sp, lineHeight = 22.sp)
             }
             if (isUser) {
                 Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.Default.Person, null, tint = TextGray, modifier = Modifier.size(24.dp).padding(bottom = 4.dp))
+                Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp).padding(bottom = 4.dp))
             }
         }
     }
@@ -268,16 +287,20 @@ fun TypingIndicator() {
     val alpha2 by transition.animateFloat(0.3f, 1f, infiniteRepeatable(tween(600, 200), RepeatMode.Reverse), "dot2")
     val alpha3 by transition.animateFloat(0.3f, 1f, infiniteRepeatable(tween(600, 400), RepeatMode.Reverse), "dot3")
 
+    // CAMBIO 10: Colores del indicador de "Escribiendo..."
+    val bubbleColor = MaterialTheme.colorScheme.surfaceVariant
+    val dotColor = MaterialTheme.colorScheme.onSurface
+
     Row(verticalAlignment = Alignment.Bottom) {
         Icon(Icons.Default.AutoAwesome, null, tint = OrangePrimary, modifier = Modifier.size(24.dp).padding(bottom = 4.dp))
         Spacer(modifier = Modifier.width(8.dp))
-        Surface(color = Color.White, shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp), shadowElevation = 2.dp, modifier = Modifier.height(40.dp)) {
+        Surface(color = bubbleColor, shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp), shadowElevation = 2.dp, modifier = Modifier.height(40.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp)) {
-                Box(Modifier.size(8.dp).clip(CircleShape).background(TextGray.copy(alpha = alpha1)))
+                Box(Modifier.size(8.dp).clip(CircleShape).background(dotColor.copy(alpha = alpha1)))
                 Spacer(Modifier.width(4.dp))
-                Box(Modifier.size(8.dp).clip(CircleShape).background(TextGray.copy(alpha = alpha2)))
+                Box(Modifier.size(8.dp).clip(CircleShape).background(dotColor.copy(alpha = alpha2)))
                 Spacer(Modifier.width(4.dp))
-                Box(Modifier.size(8.dp).clip(CircleShape).background(TextGray.copy(alpha = alpha3)))
+                Box(Modifier.size(8.dp).clip(CircleShape).background(dotColor.copy(alpha = alpha3)))
             }
         }
     }

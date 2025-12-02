@@ -41,7 +41,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.room.util.copy
 import com.keyli.plazatrujillo.ui.theme.*
 import java.text.DecimalFormat
 

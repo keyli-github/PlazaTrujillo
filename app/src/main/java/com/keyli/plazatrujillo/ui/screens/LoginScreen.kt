@@ -1,11 +1,12 @@
 package com.keyli.plazatrujillo.ui.screens
 
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.tween
+import android.view.animation.OvershootInterpolator
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,11 +16,15 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -28,54 +33,106 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.keyli.plazatrujillo.R
-import com.keyli.plazatrujillo.ui.theme.*
+import com.keyli.plazatrujillo.data.AuthRepository
+import com.keyli.plazatrujillo.ui.theme.LightBackground
+import com.keyli.plazatrujillo.ui.theme.LightSurface
+import com.keyli.plazatrujillo.ui.theme.OrangePrimary
+import com.keyli.plazatrujillo.ui.theme.TextGray
+import com.keyli.plazatrujillo.ui.theme.TextWhite
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+// =======================================================
+// LOGIN SCREEN MANAGER
+// =======================================================
+
 @Composable
-fun LoginScreen(onLoginSuccess: () -> Unit) {
-    // Estado: ¿La app ya cargó los recursos iniciales?
+fun LoginScreen(
+    onLoginSuccess: () -> Unit,
+    onNavigateToRecovery: () -> Unit
+) {
     var isAppReady by remember { mutableStateOf(false) }
 
-    // Simulación de carga de configuración inicial (Splash)
+    // Tiempo de carga inicial (Splash)
     LaunchedEffect(Unit) {
-        delay(2500) // 2.5 segundos de "Splash Screen"
+        delay(3000)
         isAppReady = true
     }
 
-    // Transición suave entre Splash y Login
-    Crossfade(
+    // Transición fluida: El Login sube suavemente cubriendo el Splash
+    AnimatedContent(
         targetState = isAppReady,
-        animationSpec = tween(durationMillis = 800), // Transición elegante de casi 1 segundo
+        transitionSpec = {
+            if (targetState) {
+                (slideInVertically { height -> height / 10 } + fadeIn(tween(800)))
+                    .togetherWith(fadeOut(tween(500)))
+            } else {
+                fadeIn(tween(0)).togetherWith(fadeOut(tween(0)))
+            }
+        },
         label = "SplashToLogin"
     ) { ready ->
         if (!ready) {
-            ProfessionalSplashScreen()
+            ElegantSplashScreen()
         } else {
-            LoginFormContent(onLoginSuccess)
+            LoginFormContent(onLoginSuccess, onNavigateToRecovery)
         }
     }
 }
 
-// ==========================================
-// 1. PANTALLA DE CARGA (SPLASH) PROFESIONAL
-// ==========================================
-@Composable
-fun ProfessionalSplashScreen() {
-    // Animación de escala para el logo (efecto "respiración" al entrar)
-    val scale = remember { Animatable(0.5f) }
+// =======================================================
+// SPLASH SCREEN "ELEGANTE"
+// =======================================================
 
+@Composable
+fun ElegantSplashScreen() {
+    // 1. Animación de "Latido" (Pulse) para el fondo del logo
+    val infiniteTransition = rememberInfiniteTransition(label = "Pulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "PulseScale"
+    )
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "PulseAlpha"
+    )
+
+    // 2. Animación de los puntos suspensivos del texto
+    var dots by remember { mutableStateOf("") }
     LaunchedEffect(Unit) {
-        scale.animateTo(
+        while (true) {
+            dots = ""
+            delay(300)
+            dots = "."
+            delay(300)
+            dots = ".."
+            delay(300)
+            dots = "..."
+            delay(500)
+        }
+    }
+
+    // 3. Animación de entrada del Logo (Rebote/Pop)
+    val logoScale = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        logoScale.animateTo(
             targetValue = 1f,
             animationSpec = tween(
                 durationMillis = 800,
-                easing = LinearOutSlowInEasing
+                easing = { OvershootInterpolator(1.2f).getInterpolation(it) }
             )
         )
     }
@@ -83,336 +140,342 @@ fun ProfessionalSplashScreen() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(LightSurface), // Fondo blanco puro limpio
+            // Fondo con un degradado muy sutil vertical (Blanco -> Gris muy claro)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(Color.White, Color(0xFFF5F5F5))
+                )
+            ),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Logo con animación de escala
-            Box(
-                modifier = Modifier
-                    .size(140.dp)
-                    .scale(scale.value)
-                    .background(color = Color.Transparent)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.logo),
-                    contentDescription = "Logo Hotel Plaza Trujillo",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
+
+            // --- CONTENEDOR DEL LOGO ---
+            Box(contentAlignment = Alignment.Center) {
+                // Círculo de "Pulso" detrás
+                Box(
+                    modifier = Modifier
+                        .size(160.dp)
+                        .scale(pulseScale)
+                        .alpha(pulseAlpha)
+                        .background(OrangePrimary.copy(alpha = 0.3f), CircleShape)
                 )
+
+                // Logo principal dentro de un círculo elevado
+                Surface(
+                    modifier = Modifier
+                        .size(160.dp)
+                        .scale(logoScale.value), // Aplica el rebote
+                    shape = CircleShape,
+                    color = Color.White,
+                    shadowElevation = 10.dp, // Sombra elegante
+                    border = BorderStroke(1.dp, Color(0xFFEEEEEE)) // Borde sutil
+                ) {
+                    Box(
+                        modifier = Modifier.padding(25.dp), // Espacio interno del logo
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.logo),
+                            contentDescription = "Logo Hotel",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
             }
 
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(Modifier.height(40.dp))
 
-            // Indicador de carga personalizado
-            CircularProgressIndicator(
+            // --- INDICADOR Y TEXTO ---
+            // Barra de carga pequeña y minimalista
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .width(120.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp)),
                 color = OrangePrimary,
-                trackColor = OrangeSecondary.copy(alpha = 0.3f), // Pista suave de fondo
-                modifier = Modifier.size(48.dp),
-                strokeWidth = 4.dp
+                trackColor = OrangePrimary.copy(alpha = 0.2f)
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
 
             Text(
-                text = "Iniciando sistema...",
+                text = "Cargando sistema$dots", // Texto fijo + puntos animados
                 color = TextGray,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
                 letterSpacing = 0.5.sp
             )
         }
 
-        // Copyright elegante al pie
+        // Copyright o versión abajo
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 40.dp),
+                .padding(bottom = 32.dp),
             contentAlignment = Alignment.BottomCenter
         ) {
             Text(
-                text = "HOTEL PLAZA TRUJILLO",
-                color = OrangePrimary,
+                text = "Hotel Plaza Trujillo",
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.5.sp // Espaciado para toque premium
+                color = TextGray.copy(alpha = 0.4f),
+                fontWeight = FontWeight.Medium
             )
         }
     }
 }
 
-// ==========================================
-// 2. CONTENIDO DEL LOGIN (FORMULARIO)
-// ==========================================
+// =======================================================
+// LOGIN FORM
+// =======================================================
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LoginFormContent(onLoginSuccess: () -> Unit) {
-    // Estados del formulario
+fun LoginFormContent(
+    onLoginSuccess: () -> Unit,
+    onNavigateToRecovery: () -> Unit
+) {
+    // --- Estados ---
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var rememberMe by remember { mutableStateOf(false) }
-
-    // Estado de carga interna (cuando presionas el botón Login)
     var isLoggingIn by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isNetworkError by remember { mutableStateOf(false) }
 
     val keyboardController = LocalSoftwareKeyboardController.current
     val scope = rememberCoroutineScope()
+    val repository = remember { AuthRepository() }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(LightBackground) // Usamos tu color Gris Suave
-    ) {
-        // --- FONDO SUPERIOR NARANJA ---
+    // --- Animación de Entrada ---
+    var isFormVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { isFormVisible = true }
+
+    val cardOffset by animateDpAsState(
+        targetValue = if (isFormVisible) 0.dp else 40.dp,
+        animationSpec = tween(800, easing = LinearOutSlowInEasing), label = "cardOffset"
+    )
+    val cardAlpha by animateFloatAsState(
+        targetValue = if (isFormVisible) 1f else 0f,
+        animationSpec = tween(800), label = "cardAlpha"
+    )
+
+    Box(modifier = Modifier.fillMaxSize().background(LightBackground)) {
+        // Fondo naranja superior
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.40f) // Un poco más corto para estilizar
-                .background(
-                    color = OrangePrimary,
-                    shape = RoundedCornerShape(bottomStart = 48.dp, bottomEnd = 48.dp) // Curva más pronunciada
-                )
+                .fillMaxHeight(0.35f)
+                .background(OrangePrimary, RoundedCornerShape(bottomStart = 48.dp, bottomEnd = 48.dp))
         )
 
-        // --- CONTENIDO ---
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(30.dp))
+            Spacer(Modifier.height(40.dp))
 
-            // Logo Circular (Con sombra para efecto 3D)
-            Surface(
-                modifier = Modifier.size(110.dp),
-                shape = CircleShape,
-                color = LightSurface,
-                shadowElevation = 12.dp
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Image(
-                        painter = painterResource(id = R.drawable.logo),
-                        contentDescription = "Logo Hotel",
-                        modifier = Modifier
-                            .padding(20.dp)
-                            .size(70.dp),
-                        contentScale = ContentScale.Fit
-                    )
+            // Logo pequeño superior
+            AnimatedVisibility(visible = isFormVisible, enter = scaleIn(tween(500, delayMillis = 200)) + fadeIn()) {
+                Surface(
+                    modifier = Modifier.size(100.dp),
+                    shape = CircleShape,
+                    color = LightSurface,
+                    shadowElevation = 8.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Image(
+                            painter = painterResource(id = R.drawable.logo),
+                            contentDescription = null,
+                            modifier = Modifier.padding(18.dp)
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
-            Text(
-                text = "Hotel Plaza Trujillo",
-                color = TextWhite, // Tu color blanco definido
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.5.sp
-            )
+            AnimatedVisibility(visible = isFormVisible, enter = fadeIn(tween(600, delayMillis = 400))) {
+                Text("Hotel Plaza Trujillo", color = TextWhite, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(Modifier.height(24.dp))
 
-            // --- TARJETA DE LOGIN ---
+            // Card Formulario
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp),
-                colors = CardDefaults.cardColors(containerColor = LightSurface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
+                    .padding(horizontal = 8.dp)
+                    .offset(y = cardOffset)
+                    .alpha(cardAlpha),
+                colors = CardDefaults.cardColors(LightSurface),
+                elevation = CardDefaults.cardElevation(8.dp),
                 shape = RoundedCornerShape(24.dp)
             ) {
                 Column(
-                    modifier = Modifier
-                        .padding(28.dp) // Más padding interno para "aire"
-                        .fillMaxWidth(),
+                    modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "Bienvenido",
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextBlack
-                    )
+                    Text("Bienvenido", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                    Text("Panel Administrativo", color = TextGray, fontSize = 14.sp, modifier = Modifier.padding(bottom = 24.dp))
 
-                    Text(
-                        text = "Panel Administrativo",
-                        fontSize = 14.sp,
-                        color = TextGray,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)
-                    )
-
-                    // === CAMPO EMAIL ===
-                    LoginTextFieldLabel(text = "Correo Electrónico")
+                    // Llamada a la función helper corregida
+                    LoginTextFieldLabel("Correo Electrónico")
                     OutlinedTextField(
                         value = email,
-                        onValueChange = { email = it },
+                        onValueChange = { email = it; errorMessage = null },
                         enabled = !isLoggingIn,
-                        placeholder = { Text("admin@plazatrujillo.com", color = Color.LightGray) },
-                        leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = TextGray) },
-                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("ejemplo@correo.com", color = Color.LightGray) },
+                        leadingIcon = { Icon(Icons.Default.Email, null, tint = OrangePrimary) },
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = OrangePrimary,
-                            unfocusedBorderColor = Color.LightGray,
-                            focusedTextColor = TextBlack,
-                            unfocusedTextColor = TextBlack
+                            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
                         ),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        modifier = Modifier.fillMaxWidth()
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(Modifier.height(16.dp))
 
-                    // === CAMPO PASSWORD ===
-                    LoginTextFieldLabel(text = "Contraseña")
+                    // Llamada a la función helper corregida
+                    LoginTextFieldLabel("Contraseña")
                     OutlinedTextField(
                         value = password,
-                        onValueChange = { password = it },
+                        onValueChange = { password = it; errorMessage = null },
                         enabled = !isLoggingIn,
                         placeholder = { Text("••••••••", color = Color.LightGray) },
-                        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = TextGray) },
+                        leadingIcon = { Icon(Icons.Default.Lock, null, tint = OrangePrimary) },
                         trailingIcon = {
-                            IconButton(onClick = { passwordVisible = !passwordVisible }, enabled = !isLoggingIn) {
-                                Icon(
-                                    imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                    contentDescription = null,
-                                    tint = if (passwordVisible) OrangePrimary else TextGray
-                                )
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null, tint = TextGray)
                             }
                         },
-                        modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = OrangePrimary,
-                            unfocusedBorderColor = Color.LightGray,
-                            focusedTextColor = TextBlack,
-                            unfocusedTextColor = TextBlack
-                        )
+                            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
                     )
 
-                    // === EXTRAS (Checkbox) ===
+                    Spacer(Modifier.height(12.dp))
+
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(
                                 checked = rememberMe,
                                 onCheckedChange = { rememberMe = it },
-                                enabled = !isLoggingIn,
-                                colors = CheckboxDefaults.colors(
-                                    checkedColor = OrangePrimary,
-                                    uncheckedColor = TextGray
-                                )
+                                colors = CheckboxDefaults.colors(checkedColor = OrangePrimary)
                             )
-                            Text("Recordarme", fontSize = 13.sp, color = TextGray)
+                            Text("Siempre conectado", fontSize = 12.sp, color = TextGray)
                         }
-                        TextButton(onClick = { }, enabled = !isLoggingIn) {
-                            Text(
-                                "Olvidé mi clave",
-                                fontSize = 13.sp,
-                                color = OrangePrimary,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        Text(
+                            text = "¿Olvidaste tu contraseña?",
+                            color = OrangePrimary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.clickable { onNavigateToRecovery() }
+                        )
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(Modifier.height(16.dp))
 
-                    // === BOTÓN PRINCIPAL CON ESTADO DE CARGA ===
                     Button(
                         onClick = {
                             keyboardController?.hide()
+                            if (email.isBlank() || password.isBlank()) {
+                                errorMessage = "Por favor completa todos los campos"
+                                isNetworkError = false
+                                return@Button
+                            }
                             isLoggingIn = true
-                            // Simular petición al servidor
+                            errorMessage = null
+                            isNetworkError = false
                             scope.launch {
-                                delay(2000)
-                                isLoggingIn = false
-                                onLoginSuccess()
+                                val result = repository.loginWithFirebase(email.trim(), password.trim())
+                                if (result.isSuccess) {
+                                    onLoginSuccess()
+                                } else {
+                                    isLoggingIn = false
+                                    val error = result.exceptionOrNull()
+                                    errorMessage = error?.message ?: "Error desconocido"
+                                    // Detectar error de red para el mensaje específico
+                                    if (errorMessage!!.contains("red", ignoreCase = true) || errorMessage!!.contains("internet", ignoreCase = true) || errorMessage!!.contains("network", ignoreCase = true)) {
+                                        isNetworkError = true
+                                    }
+                                }
                             }
                         },
                         enabled = !isLoggingIn,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(54.dp), // Botón más alto para fácil toque
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = OrangePrimary,
-                            disabledContainerColor = OrangeSecondary
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         if (isLoggingIn) {
-                            CircularProgressIndicator(
-                                color = TextWhite,
-                                modifier = Modifier.size(24.dp),
-                                strokeWidth = 2.5.dp
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("VALIDANDO...", color = TextWhite, fontWeight = FontWeight.Bold)
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Validando...", color = Color.White)
                         } else {
-                            Text(
-                                text = "INICIAR SESIÓN",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextWhite
-                            )
+                            Text("INICIAR SESIÓN", fontWeight = FontWeight.Bold)
                         }
                     }
+
+                    // --- INICIO DEL CAMBIO SOLICITADO ---
+                    AnimatedVisibility(visible = errorMessage != null) {
+                        errorMessage?.let { msg ->
+                            Spacer(Modifier.height(16.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.background(Color(0xFFFFEBEE), RoundedCornerShape(8.dp)).padding(8.dp).fillMaxWidth()
+                            ) {
+                                val displayMessage: String
+                                val displayIcon = if (isNetworkError) {
+                                    // Mensaje específico para cuando falla la conexión de red
+                                    displayMessage = "Por favor, conéctate a una red Wi-Fi o verifica tu conexión a Internet."
+                                    Icons.Default.WifiOff
+                                } else {
+                                    // Mensaje genérico para errores de credenciales
+                                    displayMessage = msg
+                                    Icons.Default.Lock
+                                }
+
+                                Icon(displayIcon, null, tint = Color.Red, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(text = displayMessage, color = Color.Red, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                    // --- FIN DEL CAMBIO SOLICITADO ---
                 }
             }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Footer
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "Hotel Plaza Trujillo © 2025",
-                    fontSize = 12.sp,
-                    color = TextGray,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "v1.0.0 Enterprise Edition",
-                    fontSize = 11.sp,
-                    color = Color.LightGray
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.weight(1f))
+            Text("v1.0.0 Enterprise Edition", color = TextGray.copy(alpha = 0.5f), fontSize = 12.sp)
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
-
-// Pequeño helper para etiquetas de texto uniformes
 @Composable
 fun LoginTextFieldLabel(text: String) {
     Text(
         text = text,
         fontSize = 14.sp,
-        fontWeight = FontWeight.SemiBold,
-        color = TextBlack,
+        fontWeight = FontWeight.Medium,
+        color = Color.Black.copy(alpha = 0.7f),
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 6.dp)
     )
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun LoginScreenPreview() {
-    PlazaTrujilloTheme(darkTheme = false) {
-        LoginScreen(onLoginSuccess = {})
-    }
 }

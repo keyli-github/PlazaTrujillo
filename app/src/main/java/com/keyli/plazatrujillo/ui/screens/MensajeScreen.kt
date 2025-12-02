@@ -10,7 +10,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
@@ -44,7 +43,6 @@ data class Contact(
     val unreadCount: Int = 0
 )
 
-// Usamos un nombre único para evitar conflictos con el ChatBot
 data class UserMessage(
     val id: Long,
     val text: String,
@@ -59,6 +57,12 @@ fun getCurrentTime(): String {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MensajeScreen(navController: NavHostController) {
+    // --- COLORES DINÁMICOS ---
+    val containerBg = MaterialTheme.colorScheme.background
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val textColor = MaterialTheme.colorScheme.onSurface
+    val subTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+
     // --- LISTA DE CONTACTOS SOLICITADA ---
     val sampleContacts = remember {
         mutableStateListOf(
@@ -85,10 +89,10 @@ fun MensajeScreen(navController: NavHostController) {
     // --- VISTA PRINCIPAL (LISTA DE CHATS) ---
     if (selectedContact == null) {
         Scaffold(
-            containerColor = LightBackground, // Fondo gris claro
+            containerColor = containerBg, // REEMPLAZADO: Fondo dinámico
             topBar = {
                 // Header tipo App de Mensajería
-                Surface(color = Color.White, shadowElevation = 2.dp) {
+                Surface(color = surfaceColor, shadowElevation = 2.dp) { // REEMPLAZADO: Color Superficie
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -98,7 +102,7 @@ fun MensajeScreen(navController: NavHostController) {
                             text = "Mensajes",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextBlack,
+                            color = textColor, // REEMPLAZADO: Color Texto
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
 
@@ -106,19 +110,21 @@ fun MensajeScreen(navController: NavHostController) {
                         OutlinedTextField(
                             value = query,
                             onValueChange = { query = it },
-                            placeholder = { Text("Buscar personal...", color = TextGray) },
+                            placeholder = { Text("Buscar personal...", color = subTextColor) },
                             leadingIcon = {
-                                Icon(Icons.Default.Search, contentDescription = null, tint = TextGray)
+                                Icon(Icons.Default.Search, contentDescription = null, tint = subTextColor)
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(50.dp),
                             shape = RoundedCornerShape(25.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = OrangePrimary, // Naranja al enfocar
+                                focusedBorderColor = OrangePrimary,
                                 unfocusedBorderColor = Color.Transparent,
-                                focusedContainerColor = LightBackground,
-                                unfocusedContainerColor = LightBackground
+                                focusedContainerColor = containerBg, // REEMPLAZADO
+                                unfocusedContainerColor = containerBg, // REEMPLAZADO
+                                focusedTextColor = textColor,
+                                unfocusedTextColor = textColor
                             ),
                             singleLine = true
                         )
@@ -130,16 +136,23 @@ fun MensajeScreen(navController: NavHostController) {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .background(Color.White) // Lista sobre blanco
+                    .background(surfaceColor) // REEMPLAZADO: Fondo de lista dinámico
             ) {
                 itemsIndexed(filtered) { index, contact ->
-                    ContactItem(contact = contact, onClick = { selectedContact = contact })
-                    // Divisor sutil entre items, excepto el último
+                    ContactItem(
+                        contact = contact,
+                        onClick = { selectedContact = contact },
+                        textColor = textColor,
+                        subTextColor = subTextColor,
+                        bgColor = containerBg,
+                        surfaceColor = surfaceColor
+                    )
+                    // Divisor sutil
                     if (index < filtered.lastIndex) {
-                        Divider(
-                            color = LightBackground,
+                        HorizontalDivider(
+                            color = subTextColor.copy(alpha = 0.1f), // REEMPLAZADO: Divider sutil
                             thickness = 1.dp,
-                            modifier = Modifier.padding(start = 80.dp) // Indentado para estética
+                            modifier = Modifier.padding(start = 80.dp)
                         )
                     }
                 }
@@ -147,7 +160,6 @@ fun MensajeScreen(navController: NavHostController) {
         }
     } else {
         // --- VISTA DE CONVERSACIÓN (OVERLAY) ---
-        // Se muestra cuando se selecciona un contacto
         ConversationScreen(
             contact = selectedContact!!,
             onBack = { selectedContact = null }
@@ -157,7 +169,14 @@ fun MensajeScreen(navController: NavHostController) {
 
 // --- ITEM DE LA LISTA DE CONTACTOS ---
 @Composable
-fun ContactItem(contact: Contact, onClick: () -> Unit) {
+fun ContactItem(
+    contact: Contact,
+    onClick: () -> Unit,
+    textColor: Color,
+    subTextColor: Color,
+    bgColor: Color,
+    surfaceColor: Color
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -169,14 +188,14 @@ fun ContactItem(contact: Contact, onClick: () -> Unit) {
         Box {
             Surface(
                 shape = CircleShape,
-                color = LightBackground,
+                color = bgColor, // REEMPLAZADO: Fondo gris suave/negro suave
                 modifier = Modifier.size(56.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
-                        text = contact.name.take(2).uppercase(), // Iniciales
+                        text = contact.name.take(2).uppercase(),
                         fontWeight = FontWeight.Bold,
-                        color = TextGray,
+                        color = subTextColor,
                         fontSize = 20.sp
                     )
                 }
@@ -185,10 +204,10 @@ fun ContactItem(contact: Contact, onClick: () -> Unit) {
                 Box(
                     modifier = Modifier
                         .size(14.dp)
-                        .background(StatusGreen, CircleShape) // Verde
+                        .background(StatusGreen, CircleShape)
                         .align(Alignment.BottomEnd)
                         .clip(CircleShape)
-                        .background(Color.White) // Borde blanco falso
+                        .background(surfaceColor) // REEMPLAZADO: Borde falso del color de la tarjeta
                         .padding(2.dp)
                 )
             }
@@ -206,12 +225,12 @@ fun ContactItem(contact: Contact, onClick: () -> Unit) {
                     text = contact.name,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp,
-                    color = TextBlack
+                    color = textColor // REEMPLAZADO
                 )
                 Text(
                     text = contact.time,
                     fontSize = 12.sp,
-                    color = if(contact.unreadCount > 0) OrangePrimary else TextGray,
+                    color = if(contact.unreadCount > 0) OrangePrimary else subTextColor,
                     fontWeight = if(contact.unreadCount > 0) FontWeight.Bold else FontWeight.Normal
                 )
             }
@@ -223,7 +242,7 @@ fun ContactItem(contact: Contact, onClick: () -> Unit) {
                 Text(
                     text = contact.lastMessage,
                     fontSize = 14.sp,
-                    color = TextGray,
+                    color = subTextColor, // REEMPLAZADO
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
@@ -258,6 +277,12 @@ fun ContactItem(contact: Contact, onClick: () -> Unit) {
 // --- PANTALLA DE CHAT INDIVIDUAL ---
 @Composable
 fun ConversationScreen(contact: Contact, onBack: () -> Unit) {
+    // Colores dinámicos locales
+    val containerBg = MaterialTheme.colorScheme.background
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val textColor = MaterialTheme.colorScheme.onSurface
+    val subTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+
     // Mensajes simulados iniciales
     val messages = remember {
         mutableStateListOf(
@@ -271,11 +296,11 @@ fun ConversationScreen(contact: Contact, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
 
     Scaffold(
-        containerColor = LightBackground,
-        modifier = Modifier.imePadding(), // IMPORTANTE: Ajuste teclado
+        containerColor = containerBg, // REEMPLAZADO
+        modifier = Modifier.imePadding(),
         topBar = {
             // Header del Chat
-            Surface(shadowElevation = 4.dp, color = Color.White) {
+            Surface(shadowElevation = 4.dp, color = surfaceColor) { // REEMPLAZADO
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -283,7 +308,7 @@ fun ConversationScreen(contact: Contact, onBack: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Atrás", tint = TextBlack)
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Atrás", tint = textColor) // REEMPLAZADO
                     }
 
                     // Avatar pequeño
@@ -291,7 +316,7 @@ fun ConversationScreen(contact: Contact, onBack: () -> Unit) {
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(LightBackground),
+                            .background(containerBg), // REEMPLAZADO: contraste con header
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -304,11 +329,11 @@ fun ConversationScreen(contact: Contact, onBack: () -> Unit) {
                     Spacer(modifier = Modifier.width(10.dp))
 
                     Column {
-                        Text(contact.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextBlack)
+                        Text(contact.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = textColor) // REEMPLAZADO
                         Text(
                             text = if(contact.online) "En línea" else contact.role,
                             fontSize = 12.sp,
-                            color = if(contact.online) StatusGreen else TextGray
+                            color = if(contact.online) StatusGreen else subTextColor
                         )
                     }
                 }
@@ -317,7 +342,7 @@ fun ConversationScreen(contact: Contact, onBack: () -> Unit) {
         bottomBar = {
             // Input Flotante
             Surface(
-                color = Color.White,
+                color = surfaceColor, // REEMPLAZADO
                 shadowElevation = 8.dp
             ) {
                 Row(
@@ -329,14 +354,16 @@ fun ConversationScreen(contact: Contact, onBack: () -> Unit) {
                     OutlinedTextField(
                         value = inputText,
                         onValueChange = { inputText = it },
-                        placeholder = { Text("Escribe un mensaje...", fontSize = 14.sp) },
+                        placeholder = { Text("Escribe un mensaje...", fontSize = 14.sp, color = subTextColor) },
                         modifier = Modifier
                             .weight(1f)
                             .height(50.dp),
                         shape = RoundedCornerShape(25.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = OrangePrimary,
-                            unfocusedBorderColor = TextGray.copy(alpha = 0.3f)
+                            unfocusedBorderColor = subTextColor.copy(alpha = 0.3f),
+                            focusedTextColor = textColor, // Para que se vea en oscuro
+                            unfocusedTextColor = textColor
                         ),
                         singleLine = true
                     )
@@ -392,8 +419,17 @@ fun ConversationScreen(contact: Contact, onBack: () -> Unit) {
 @Composable
 fun ChatBubble(message: UserMessage) {
     val align = if (message.isMe) Alignment.End else Alignment.Start
-    val color = if (message.isMe) OrangePrimary else Color.White
-    val textColor = if (message.isMe) Color.White else TextBlack
+
+    // LOGICA DE COLORES DE BURBUJA
+    // Si soy yo: Naranja.
+    // Si es el otro: Blanco (en tema claro) o Gris Oscuro (en tema oscuro).
+    val bubbleColor = if (message.isMe) OrangePrimary else MaterialTheme.colorScheme.surfaceVariant
+
+    // LOGICA DE COLORES DE TEXTO
+    // Si soy yo: Blanco.
+    // Si es el otro: Negro (en tema claro) o Blanco (en tema oscuro).
+    val textColor = if (message.isMe) Color.White else MaterialTheme.colorScheme.onSurface
+
     val shape = if (message.isMe) {
         RoundedCornerShape(topStart = 16.dp, topEnd = 2.dp, bottomStart = 16.dp, bottomEnd = 16.dp)
     } else {
@@ -402,15 +438,15 @@ fun ChatBubble(message: UserMessage) {
 
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = align) {
         Surface(
-            color = color,
+            color = bubbleColor, // REEMPLAZADO: Color dinámico
             shape = shape,
             shadowElevation = 1.dp,
-            modifier = Modifier.widthIn(max = 280.dp) // Ancho máximo burbuja
+            modifier = Modifier.widthIn(max = 280.dp)
         ) {
             Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                 Text(
                     text = message.text,
-                    color = textColor,
+                    color = textColor, // REEMPLAZADO: Color dinámico
                     fontSize = 15.sp
                 )
                 Spacer(modifier = Modifier.height(4.dp))

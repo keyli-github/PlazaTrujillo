@@ -25,14 +25,17 @@ import com.keyli.plazatrujillo.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
-// Color específico para el fondo de los inputs (Gris muy clarito)
-val InputBackground = Color(0xFFF5F5F5)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewUsuario(navController: NavHostController) {
+    // --- COLORES DINÁMICOS ---
+    val bgColor = MaterialTheme.colorScheme.background
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val textColor = MaterialTheme.colorScheme.onBackground
+    val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
+    val inputBgColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
 
-    // --- Estados ---
+    // --- ESTADOS ---
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var salary by remember { mutableStateOf("") }
@@ -57,25 +60,25 @@ fun NewUsuario(navController: NavHostController) {
     }
 
     Scaffold(
-        containerColor = Color.White, // Fondo blanco limpio
+        containerColor = bgColor, // Fondo dinámico
         topBar = {
-            // Header corregido
+            // Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.White)
-                    .statusBarsPadding() // <--- ESTO EVITA QUE SE VEA APLASTADO ARRIBA
+                    .background(surfaceColor)
+                    .statusBarsPadding()
                     .padding(top = 12.dp, bottom = 12.dp, start = 8.dp, end = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Atrás", tint = TextBlack)
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Atrás", tint = textColor)
                 }
                 Text(
                     text = "Crear Nuevo Usuario",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextBlack,
+                    color = textColor,
                     modifier = Modifier.padding(start = 8.dp)
                 )
             }
@@ -87,11 +90,11 @@ fun NewUsuario(navController: NavHostController) {
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 10.dp) // Márgenes laterales
+                .padding(horizontal = 24.dp, vertical = 10.dp)
         ) {
 
             // Sección 1: Datos Principales
-            SectionTitle("Información Personal")
+            SectionTitle("Información Personal", textColor)
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -101,7 +104,10 @@ fun NewUsuario(navController: NavHostController) {
                 value = name,
                 onValueChange = { name = it },
                 icon = Icons.Default.Person,
-                placeholder = "Ej: Marco Antonio Castro"
+                placeholder = "Ej: Marco Antonio Castro",
+                inputBgColor = inputBgColor,
+                textColor = textColor,
+                placeholderColor = textSecondary
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -113,18 +119,21 @@ fun NewUsuario(navController: NavHostController) {
                 onValueChange = { email = it },
                 icon = Icons.Default.Email,
                 placeholder = "usuario@plaza.com",
-                keyboardType = KeyboardType.Email
+                keyboardType = KeyboardType.Email,
+                inputBgColor = inputBgColor,
+                textColor = textColor,
+                placeholderColor = textSecondary
             )
 
             Spacer(modifier = Modifier.height(30.dp))
 
             // Sección 2: Datos Laborales
-            SectionTitle("Detalles del Puesto")
+            SectionTitle("Detalles del Puesto", textColor)
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // CAMPO: ROL (Dropdown)
-            DesignLabel("Rol / Cargo")
+            DesignLabel("Rol / Cargo", textSecondary)
             ExposedDropdownMenuBox(
                 expanded = roleExpanded,
                 onExpandedChange = { roleExpanded = !roleExpanded },
@@ -140,7 +149,7 @@ fun NewUsuario(navController: NavHostController) {
                     trailingIcon = {
                         Icon(
                             if (roleExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                            null, tint = TextGray
+                            null, tint = textSecondary
                         )
                     },
                     modifier = Modifier
@@ -148,25 +157,25 @@ fun NewUsuario(navController: NavHostController) {
                         .menuAnchor(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = InputBackground,
-                        unfocusedContainerColor = InputBackground,
-                        disabledContainerColor = InputBackground,
+                        focusedContainerColor = inputBgColor,
+                        unfocusedContainerColor = inputBgColor,
+                        disabledContainerColor = inputBgColor,
                         focusedBorderColor = Color.Transparent,
                         unfocusedBorderColor = Color.Transparent,
                         cursorColor = OrangePrimary,
-                        focusedTextColor = TextBlack,
-                        unfocusedTextColor = if(selectedRole.isEmpty()) TextGray else TextBlack
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = if(selectedRole.isEmpty()) textSecondary else textColor
                     )
                 )
 
                 ExposedDropdownMenu(
                     expanded = roleExpanded,
                     onDismissRequest = { roleExpanded = false },
-                    modifier = Modifier.background(Color.White)
+                    modifier = Modifier.background(surfaceColor)
                 ) {
                     roles.forEach { rol ->
                         DropdownMenuItem(
-                            text = { Text(rol) },
+                            text = { Text(rol, color = textColor) },
                             onClick = {
                                 selectedRole = rol
                                 roleExpanded = false
@@ -185,31 +194,34 @@ fun NewUsuario(navController: NavHostController) {
                 onValueChange = { salary = it },
                 icon = Icons.Default.ShoppingCart,
                 placeholder = "S/ 0.00",
-                keyboardType = KeyboardType.Number
+                keyboardType = KeyboardType.Number,
+                inputBgColor = inputBgColor,
+                textColor = textColor,
+                placeholderColor = textSecondary
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
             // CAMPO: FECHA
-            DesignLabel("Fecha de Ingreso")
+            DesignLabel("Fecha de Ingreso", textSecondary)
             Box(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = selectedDateDisplay,
                     onValueChange = {},
                     readOnly = true,
-                    placeholder = { Text("Seleccionar fecha", color = TextGray) },
+                    placeholder = { Text("Seleccionar fecha", color = textSecondary) },
                     leadingIcon = {
                         Icon(Icons.Default.DateRange, null, tint = OrangePrimary)
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = InputBackground,
-                        unfocusedContainerColor = InputBackground,
+                        focusedContainerColor = inputBgColor,
+                        unfocusedContainerColor = inputBgColor,
                         focusedBorderColor = Color.Transparent,
                         unfocusedBorderColor = Color.Transparent,
-                        focusedTextColor = TextBlack,
-                        unfocusedTextColor = TextBlack
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor
                     )
                 )
                 Box(
@@ -253,18 +265,22 @@ fun NewUsuario(navController: NavHostController) {
                 },
                 dismissButton = {
                     TextButton(onClick = { showDatePicker = false }) {
-                        Text("Cancelar", color = TextGray)
+                        Text("Cancelar", color = textSecondary)
                     }
                 },
-                colors = DatePickerDefaults.colors(containerColor = Color.White)
-            ) {
-                DatePicker(
-                    state = datePickerState,
-                    colors = DatePickerDefaults.colors(
-                        selectedDayContainerColor = OrangePrimary,
-                        todayDateBorderColor = OrangePrimary
-                    )
+                colors = DatePickerDefaults.colors(
+                    containerColor = surfaceColor,
+                    titleContentColor = textColor,
+                    headlineContentColor = textColor,
+                    weekdayContentColor = textSecondary,
+                    dayContentColor = textColor,
+                    todayContentColor = OrangePrimary,
+                    todayDateBorderColor = OrangePrimary,
+                    selectedDayContainerColor = OrangePrimary,
+                    selectedDayContentColor = Color.White
                 )
+            ) {
+                DatePicker(state = datePickerState)
             }
         }
     }
@@ -275,22 +291,22 @@ fun NewUsuario(navController: NavHostController) {
 // -------------------------------------------------------------------
 
 @Composable
-fun SectionTitle(text: String) {
+fun SectionTitle(text: String, color: Color) {
     Text(
         text = text,
         fontSize = 18.sp,
         fontWeight = FontWeight.Bold,
-        color = TextBlack,
+        color = color,
         modifier = Modifier.padding(bottom = 8.dp)
     )
 }
 
 @Composable
-fun DesignLabel(text: String) {
+fun DesignLabel(text: String, color: Color) {
     Text(
         text = text,
         fontSize = 14.sp,
-        color = TextGray,
+        color = color,
         fontWeight = FontWeight.Medium,
         modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
     )
@@ -303,15 +319,18 @@ fun DesignTextField(
     onValueChange: (String) -> Unit,
     icon: ImageVector,
     placeholder: String,
-    keyboardType: KeyboardType = KeyboardType.Text
+    keyboardType: KeyboardType = KeyboardType.Text,
+    inputBgColor: Color,
+    textColor: Color,
+    placeholderColor: Color
 ) {
     Column {
-        DesignLabel(label)
+        DesignLabel(label, placeholderColor)
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(placeholder, color = Color(0xFFB0B0B0)) },
+            placeholder = { Text(placeholder, color = placeholderColor) },
             leadingIcon = {
                 Icon(
                     imageVector = icon,
@@ -323,13 +342,13 @@ fun DesignTextField(
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Next),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = InputBackground,
-                unfocusedContainerColor = InputBackground,
+                focusedContainerColor = inputBgColor,
+                unfocusedContainerColor = inputBgColor,
                 focusedBorderColor = Color.Transparent,
                 unfocusedBorderColor = Color.Transparent,
                 cursorColor = OrangePrimary,
-                focusedTextColor = TextBlack,
-                unfocusedTextColor = TextBlack
+                focusedTextColor = textColor,
+                unfocusedTextColor = textColor
             )
         )
     }
