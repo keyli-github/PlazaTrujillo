@@ -1,5 +1,8 @@
 package com.keyli.plazatrujillo.ui.screens
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.view.animation.OvershootInterpolator
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -13,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -27,14 +31,17 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.fragment.app.FragmentActivity
 import com.keyli.plazatrujillo.R
 import com.keyli.plazatrujillo.data.AuthRepository
 import com.keyli.plazatrujillo.ui.theme.LightBackground
@@ -42,6 +49,8 @@ import com.keyli.plazatrujillo.ui.theme.LightSurface
 import com.keyli.plazatrujillo.ui.theme.OrangePrimary
 import com.keyli.plazatrujillo.ui.theme.TextGray
 import com.keyli.plazatrujillo.ui.theme.TextWhite
+import com.keyli.plazatrujillo.util.BiometricHelper
+import com.keyli.plazatrujillo.util.BiometricStatus
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -239,6 +248,11 @@ fun LoginFormContent(
     onLoginSuccess: () -> Unit,
     onNavigateToRecovery: () -> Unit
 ) {
+    // --- Context y Activity para biometría ---
+    val context = LocalContext.current
+    val activity = context.findActivity()
+    val biometricHelper = remember { BiometricHelper(context) }
+
     // --- Estados ---
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -247,10 +261,100 @@ fun LoginFormContent(
     var isLoggingIn by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isNetworkError by remember { mutableStateOf(false) }
+    
+    // Estados para biometría - recalculamos cada vez
+    var canUseBiometric by remember { mutableStateOf(false) }
+    var showBiometricButton by remember { mutableStateOf(false) }
+    
+    // Verificar biometría al iniciar
+    LaunchedEffect(Unit) {
+        canUseBiometric = biometricHelper.canAuthenticate() == BiometricStatus.AVAILABLE
+        val hasCredentials = biometricHelper.hasStoredCredentials()
+        showBiometricButton = canUseBiometric && hasCredentials
+        
+        // Cargar email guardado si existe
+        biometricHelper.getSavedEmail()?.let { savedEmail ->
+            email = savedEmail
+        }
+    }
 
     val keyboardController = LocalSoftwareKeyboardController.current
     val scope = rememberCoroutineScope()
     val repository = remember { AuthRepository() }
+
+    // Función para autenticar con biometría
+    fun authenticateWithBiometric() {
+        val fragmentActivity = activity as? FragmentActivity
+        if (fragmentActivity == null) {
+            errorMessage = "Error: Dispositivo no compatible"
+            return
+        }
+        
+        biometricHelper.showBiometricPrompt(
+            activity = fragmentActivity,
+            title = "Hotel Plaza Trujillo",
+            subtitle = "Usa tu huella digital para iniciar sesión",
+            negativeButtonText = "Cancelar",
+            onSuccess = {
+                val credentials = biometricHelper.getCredentials()
+                if (credentials != null) {
+                    isLoggingIn = true
+                    errorMessage = null
+                    scope.launch {
+                        val result = repository.loginWithFirebase(credentials.first, credentials.second)
+                        if (result.isSuccess) {
+                            onLoginSuccess()
+                        } else {
+                            isLoggingIn = false
+                            errorMessage = "Las credenciales guardadas no son válidas. Inicia sesión manualmente."
+                            biometricHelper.clearCredentials()
+                            showBiometricButton = false
+                        }
+                    }
+                } else {
+                    errorMessage = "No hay credenciales guardadas"
+                }
+            },
+            onError = { error ->
+                errorMessage = error
+            },
+            onFailed = {
+                errorMessage = "Huella no reconocida"
+            }
+        )
+    }
+
+    // Función para hacer login normal
+    fun performLogin() {
+        keyboardController?.hide()
+        if (email.isBlank() || password.isBlank()) {
+            errorMessage = "Por favor completa todos los campos"
+            isNetworkError = false
+            return
+        }
+        isLoggingIn = true
+        errorMessage = null
+        isNetworkError = false
+        scope.launch {
+            val result = repository.loginWithFirebase(email.trim(), password.trim())
+            if (result.isSuccess) {
+                // Guardar credenciales si "Siempre conectado" está activado
+                if (rememberMe && canUseBiometric) {
+                    biometricHelper.saveCredentials(email.trim(), password.trim())
+                }
+                onLoginSuccess()
+            } else {
+                isLoggingIn = false
+                val error = result.exceptionOrNull()
+                errorMessage = error?.message ?: "Error desconocido"
+                if (errorMessage!!.contains("red", ignoreCase = true) || 
+                    errorMessage!!.contains("internet", ignoreCase = true) || 
+                    errorMessage!!.contains("network", ignoreCase = true)) {
+                    isNetworkError = true
+                }
+            }
+        }
+    }
 
     // --- Animación de Entrada ---
     var isFormVisible by remember { mutableStateOf(false) }
@@ -380,7 +484,16 @@ fun LoginFormContent(
                                 onCheckedChange = { rememberMe = it },
                                 colors = CheckboxDefaults.colors(checkedColor = OrangePrimary)
                             )
-                            Text("Siempre conectado", fontSize = 12.sp, color = TextGray)
+                            Column {
+                                Text("Siempre conectado", fontSize = 12.sp, color = TextGray)
+                                if (canUseBiometric) {
+                                    Text(
+                                        "Habilita huella digital",
+                                        fontSize = 10.sp,
+                                        color = OrangePrimary.copy(alpha = 0.7f)
+                                    )
+                                }
+                            }
                         }
                         Text(
                             text = "¿Olvidaste tu contraseña?",
@@ -393,32 +506,9 @@ fun LoginFormContent(
 
                     Spacer(Modifier.height(16.dp))
 
+                    // Botón de Login
                     Button(
-                        onClick = {
-                            keyboardController?.hide()
-                            if (email.isBlank() || password.isBlank()) {
-                                errorMessage = "Por favor completa todos los campos"
-                                isNetworkError = false
-                                return@Button
-                            }
-                            isLoggingIn = true
-                            errorMessage = null
-                            isNetworkError = false
-                            scope.launch {
-                                val result = repository.loginWithFirebase(email.trim(), password.trim())
-                                if (result.isSuccess) {
-                                    onLoginSuccess()
-                                } else {
-                                    isLoggingIn = false
-                                    val error = result.exceptionOrNull()
-                                    errorMessage = error?.message ?: "Error desconocido"
-                                    // Detectar error de red para el mensaje específico
-                                    if (errorMessage!!.contains("red", ignoreCase = true) || errorMessage!!.contains("internet", ignoreCase = true) || errorMessage!!.contains("network", ignoreCase = true)) {
-                                        isNetworkError = true
-                                    }
-                                }
-                            }
-                        },
+                        onClick = { performLogin() },
                         enabled = !isLoggingIn,
                         modifier = Modifier.fillMaxWidth().height(50.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
@@ -430,6 +520,70 @@ fun LoginFormContent(
                             Text("Validando...", color = Color.White)
                         } else {
                             Text("INICIAR SESIÓN", fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    // Botón de Huella Digital (solo si hay credenciales guardadas)
+                    AnimatedVisibility(
+                        visible = showBiometricButton && !isLoggingIn,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Spacer(Modifier.height(16.dp))
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                HorizontalDivider(
+                                    modifier = Modifier.weight(1f),
+                                    color = Color.LightGray.copy(alpha = 0.5f)
+                                )
+                                Text(
+                                    "  o usa tu huella  ",
+                                    color = TextGray,
+                                    fontSize = 12.sp
+                                )
+                                HorizontalDivider(
+                                    modifier = Modifier.weight(1f),
+                                    color = Color.LightGray.copy(alpha = 0.5f)
+                                )
+                            }
+                            
+                            Spacer(Modifier.height(16.dp))
+                            
+                            // Botón circular de huella
+                            Surface(
+                                modifier = Modifier
+                                    .size(70.dp)
+                                    .clickable { authenticateWithBiometric() },
+                                shape = CircleShape,
+                                color = OrangePrimary.copy(alpha = 0.1f),
+                                border = BorderStroke(2.dp, OrangePrimary)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Default.Fingerprint,
+                                        contentDescription = "Huella Digital",
+                                        tint = OrangePrimary,
+                                        modifier = Modifier.size(40.dp)
+                                    )
+                                }
+                            }
+                            
+                            Spacer(Modifier.height(8.dp))
+                            
+                            Text(
+                                "Toca para usar huella",
+                                color = TextGray,
+                                fontSize = 12.sp,
+                                textAlign = TextAlign.Center
+                            )
                         }
                     }
 
@@ -478,4 +632,19 @@ fun LoginTextFieldLabel(text: String) {
             .fillMaxWidth()
             .padding(bottom = 6.dp)
     )
+}
+
+/**
+ * Extension function para encontrar la Activity desde un Context
+ * Esto es necesario porque Compose envuelve el contexto en ContextWrapper
+ */
+fun Context.findActivity(): Activity? {
+    var context = this
+    while (context is ContextWrapper) {
+        if (context is Activity) {
+            return context
+        }
+        context = context.baseContext
+    }
+    return null
 }

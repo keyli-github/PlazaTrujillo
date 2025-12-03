@@ -1,9 +1,9 @@
 package com.keyli.plazatrujillo
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.keyli.plazatrujillo.data.websocket.WebSocketService
@@ -11,7 +11,8 @@ import com.keyli.plazatrujillo.ui.navigation.NavigationWrapper
 import com.keyli.plazatrujillo.ui.theme.PlazaTrujilloTheme
 import com.keyli.plazatrujillo.ui.theme.ThemeViewModel
 
-class MainActivity : ComponentActivity() {
+// FragmentActivity es necesario para la autenticación biométrica
+class MainActivity : FragmentActivity() {
     
     private val authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
         val user = firebaseAuth.currentUser

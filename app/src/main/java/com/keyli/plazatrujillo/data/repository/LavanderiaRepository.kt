@@ -22,13 +22,15 @@ class LavanderiaRepository {
         }
     }
     
-    suspend fun upsertStock(request: UpsertStockRequest): Result<List<StockItem>> = withContext(Dispatchers.IO) {
+    suspend fun upsertStock(items: List<StockItemRequest>): Result<List<StockItem>> = withContext(Dispatchers.IO) {
         try {
+            val request = UpsertStockRequest(items = items)
             val response = apiService.upsertStock(request)
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!.updated ?: emptyList())
             } else {
-                Result.failure(Exception("Error: ${response.code()} - ${response.message()}"))
+                val errorBody = response.errorBody()?.string()
+                Result.failure(Exception(errorBody ?: "Error: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -41,20 +43,22 @@ class LavanderiaRepository {
             if (response.isSuccessful && response.body() != null && response.body()!!.order != null) {
                 Result.success(response.body()!!.order!!)
             } else {
-                Result.failure(Exception("Error: ${response.code()} - ${response.message()}"))
+                val errorBody = response.errorBody()?.string()
+                Result.failure(Exception(errorBody ?: "Error: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
     
-    suspend fun returnOrder(orderCode: String): Result<LaundryOrder> = withContext(Dispatchers.IO) {
+    suspend fun returnOrder(orderCode: String): Result<ReturnOrderResponse> = withContext(Dispatchers.IO) {
         try {
             val response = apiService.returnOrder(orderCode)
-            if (response.isSuccessful && response.body() != null && response.body()!!.order != null) {
-                Result.success(response.body()!!.order!!)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
             } else {
-                Result.failure(Exception("Error: ${response.code()} - ${response.message()}"))
+                val errorBody = response.errorBody()?.string()
+                Result.failure(Exception(errorBody ?: "Error: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -74,13 +78,15 @@ class LavanderiaRepository {
         }
     }
     
-    suspend fun updateDamage(request: UpdateDamageRequest): Result<Map<String, Int>> = withContext(Dispatchers.IO) {
+    suspend fun updateDamage(category: String, quantity: Int, action: String): Result<UpdateDamageResponse> = withContext(Dispatchers.IO) {
         try {
+            val request = UpdateDamageRequest(category = category, quantity = quantity, action = action)
             val response = apiService.updateDamage(request)
             if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!.damage ?: emptyMap())
+                Result.success(response.body()!!)
             } else {
-                Result.failure(Exception("Error: ${response.code()} - ${response.message()}"))
+                val errorBody = response.errorBody()?.string()
+                Result.failure(Exception(errorBody ?: "Error: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
