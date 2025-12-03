@@ -1,5 +1,3 @@
-//DashboardScreen.kt
-
 package com.keyli.plazatrujillo.ui.screens
 
 import androidx.compose.foundation.Canvas
@@ -52,18 +50,19 @@ val PieOrange = Color(0xFFFF5722)
 fun DashboardScreen(
     navController: NavController,
     isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit
+    onToggleTheme: () -> Unit,
+    showHeaderActions: Boolean // nuevo parámetro: controla si se muestran los iconos del header
 ) {
     // ViewModel para obtener datos de la API
     val viewModel: DashboardViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    
+
     // Cargar datos cuando se inicia la pantalla
     LaunchedEffect(Unit) {
         viewModel.loadDashboardData()
     }
-    
+
     // Manejar errores
     LaunchedEffect(uiState.error) {
         uiState.error?.let { error ->
@@ -74,7 +73,7 @@ fun DashboardScreen(
             viewModel.clearError()
         }
     }
-    
+
     val scrollState = rememberScrollState()
 
     // Estados para los menús
@@ -118,13 +117,15 @@ fun DashboardScreen(
                         .verticalScroll(scrollState)
                 ) {
                     // CABECERA
+                    // Paso el flag showHeaderActions a DashboardHeader para ocultar/mostrar los iconos
                     DashboardHeader(
                         isDarkTheme = isDarkTheme,
                         onToggleTheme = onToggleTheme,
                         textColor = textColor,
                         subTextColor = subTextColor,
                         onProfileClick = { showProfileMenu = true },
-                        onNotificationClick = { showNotifications = true }
+                        onNotificationClick = { showNotifications = true },
+                        showActions = showHeaderActions
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -136,28 +137,28 @@ fun DashboardScreen(
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
-                    
+
                     // Gráfico de ingresos mensuales con datos reales
                     MonthlyIncomeChart(
-                        cardBgColor, 
+                        cardBgColor,
                         textColor,
                         monthlyRevenue = uiState.monthlyRevenue
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
-                    
+
                     // Gráfico de ingresos anuales con datos reales
                     IncomeVsExpensesChart(
-                        cardBgColor, 
+                        cardBgColor,
                         textColor,
                         statistics = uiState.statistics
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
-                    
+
                     // Métodos de pago con datos reales
                     PaymentMethodChart(
-                        cardBgColor, 
+                        cardBgColor,
                         textColor,
                         paymentMethods = uiState.paymentMethods
                     )
@@ -166,7 +167,7 @@ fun DashboardScreen(
 
                     // Gráfico de ocupación semanal con datos reales
                     OccupancyChart(
-                        cardBgColor, 
+                        cardBgColor,
                         textColor,
                         occupancyData = uiState.occupancyWeekly
                     )
@@ -175,8 +176,8 @@ fun DashboardScreen(
 
                     // Check-ins de hoy con datos reales
                     TodayCheckIns(
-                        cardBgColor, 
-                        textColor, 
+                        cardBgColor,
+                        textColor,
                         isDarkTheme,
                         checkins = uiState.todayCheckinsCheckouts?.checkins
                     )
@@ -185,8 +186,8 @@ fun DashboardScreen(
 
                     // Check-outs de hoy con datos reales
                     TodayCheckOuts(
-                        cardBgColor, 
-                        textColor, 
+                        cardBgColor,
+                        textColor,
                         isDarkTheme,
                         checkouts = uiState.todayCheckinsCheckouts?.checkouts
                     )
@@ -195,8 +196,8 @@ fun DashboardScreen(
 
                     // Reservas recientes con datos reales
                     RecentReservations(
-                        cardBgColor, 
-                        textColor, 
+                        cardBgColor,
+                        textColor,
                         isDarkTheme,
                         reservations = uiState.recentReservations
                     )
@@ -204,7 +205,7 @@ fun DashboardScreen(
                     Spacer(modifier = Modifier.height(80.dp))
                 }
             }
-            
+
             // Indicador de carga cuando se está refrescando
             if (uiState.isLoading && uiState.metrics != null) {
                 LinearProgressIndicator(
@@ -229,7 +230,6 @@ fun DashboardScreen(
                             }
                             HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
                             DropdownMenuItem(text = { Text("Editar Perfil", color = textColor) }, leadingIcon = { Icon(Icons.Default.Edit, null, tint = textColor) }, onClick = { showProfileMenu = false; navController.navigate("profile") })
-                            DropdownMenuItem(text = { Text("Configuración", color = textColor) }, leadingIcon = { Icon(Icons.Default.Settings, null, tint = textColor) }, onClick = { showProfileMenu = false })
                             HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
                             DropdownMenuItem(text = { Text("Cerrar Sesión", color = StatusRed, fontWeight = FontWeight.Bold) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, null, tint = StatusRed) }, onClick = { showProfileMenu = false; navController.navigate("login") { popUpTo(0) } })
                         }
@@ -265,7 +265,7 @@ fun DashboardScreen(
 // 1. TASA DE OCUPACIÓN SEMANAL (Diseño exacto de imagen)
 @Composable
 fun OccupancyChart(
-    cardBg: Color, 
+    cardBg: Color,
     text: Color,
     occupancyData: List<Double> = emptyList()
 ) {
@@ -363,8 +363,8 @@ fun OccupancyChart(
 // 2. CHECK-IN DE HOY (Lista con iconos azules)
 @Composable
 fun TodayCheckIns(
-    cardBg: Color, 
-    text: Color, 
+    cardBg: Color,
+    text: Color,
     dark: Boolean,
     checkins: List<CheckinCheckoutItem>? = null
 ) {
@@ -427,8 +427,8 @@ fun CheckInItem(time: String, name: String, room: String, textColor: Color) {
 // --- AGREGADO: CHECK-OUT DE HOY ---
 @Composable
 fun TodayCheckOuts(
-    cardBg: Color, 
-    text: Color, 
+    cardBg: Color,
+    text: Color,
     dark: Boolean,
     checkouts: List<CheckinCheckoutItem>? = null
 ) {
@@ -491,8 +491,8 @@ fun CheckOutItem(time: String, name: String, room: String, textColor: Color) {
 // 3. RESERVAS RECIENTES (Lista con estados de color)
 @Composable
 fun RecentReservations(
-    cardBg: Color, 
-    text: Color, 
+    cardBg: Color,
+    text: Color,
     dark: Boolean,
     reservations: List<RecentReservationItem> = emptyList()
 ) {
@@ -592,7 +592,8 @@ fun DashboardHeader(
     textColor: Color,
     subTextColor: Color,
     onProfileClick: () -> Unit,
-    onNotificationClick: () -> Unit
+    onNotificationClick: () -> Unit,
+    showActions: Boolean // nuevo parámetro
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -613,10 +614,20 @@ fun DashboardHeader(
             )
         }
 
+        // Mantener siempre el mismo lugar/espacio para los iconos.
+        // Si showActions == true mostramos los IconBox interactivos,
+        // si es false mostramos placeholders invisibles del mismo tamaño para que la posición no cambie.
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            IconBox(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, onToggleTheme, isDarkTheme)
-            IconBox(Icons.Default.Notifications, onNotificationClick, isDarkTheme)
-            IconBox(Icons.Default.Person, onProfileClick, isDarkTheme)
+            if (showActions) {
+                IconBox(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, onToggleTheme, isDarkTheme)
+                IconBox(Icons.Default.Notifications, onNotificationClick, isDarkTheme)
+                IconBox(Icons.Default.Person, onProfileClick, isDarkTheme)
+            } else {
+                // Placeholders con el mismo tamaño para conservar layout sin interacción
+                Box(modifier = Modifier.size(40.dp).clip(CircleShape))
+                Box(modifier = Modifier.size(40.dp).clip(CircleShape))
+                Box(modifier = Modifier.size(40.dp).clip(CircleShape))
+            }
         }
     }
 }
@@ -796,7 +807,7 @@ fun KpiCard(
 /* --- MonthlyIncomeChart --- */
 @Composable
 fun MonthlyIncomeChart(
-    cardBg: Color, 
+    cardBg: Color,
     text: Color,
     monthlyRevenue: List<Double> = emptyList()
 ) {
@@ -921,7 +932,7 @@ fun MonthlyIncomeChart(
 /* --- INGRESOS ANUALES (Modificado: Antes Ingresos vs Gastos) --- */
 @Composable
 fun IncomeVsExpensesChart(
-    cardBg: Color, 
+    cardBg: Color,
     text: Color,
     statistics: StatisticsResponse? = null
 ) {
@@ -1039,7 +1050,7 @@ fun LegendItem(text: String, color: Color) {
 /* --- PaymentMethodChart: anillo (donut) con porcentajes y leyenda con % --- */
 @Composable
 fun PaymentMethodChart(
-    cardBg: Color, 
+    cardBg: Color,
     text: Color,
     paymentMethods: Map<String, Double> = emptyMap()
 ) {
