@@ -59,17 +59,17 @@ fun EditUsuarioScreen(
     // ViewModel
     val viewModel: UserViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
-    
+
     // Cargar usuarios si no están cargados
     LaunchedEffect(Unit) {
         if (uiState.users.isEmpty()) {
             viewModel.loadUsers()
         }
     }
-    
+
     // Buscar el usuario por UID
     val user = uiState.users.firstOrNull { it.uid == uid }
-    
+
     if (user == null) {
         // Mostrar carga o error si no se encuentra el usuario
         Box(
@@ -98,7 +98,7 @@ fun EditUsuarioScreen(
         }
         return
     }
-    
+
     EditUsuario(navController, user, viewModel)
 }
 
@@ -112,7 +112,7 @@ private fun EditUsuario(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val uiState by viewModel.uiState.collectAsState()
-    
+
     // --- COLORES DINÁMICOS ---
     val bgColor = MaterialTheme.colorScheme.background
     val surfaceColor = MaterialTheme.colorScheme.surface
@@ -131,7 +131,8 @@ private fun EditUsuario(
     var showDatePicker by remember { mutableStateOf(false) }
     var selectedDateDisplay by remember { mutableStateOf("") }
     var selectedDateISO by remember { mutableStateOf<String?>(null) }
-    
+    var showSuccessOverlay by remember { mutableStateOf(false) }
+
     // Inicializar fecha si existe
     LaunchedEffect(Unit) {
         user.entryDate?.let { dateStr ->
@@ -150,7 +151,7 @@ private fun EditUsuario(
             }
         }
     }
-    
+
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = user.entryDate?.let { dateStr ->
             try {
@@ -171,7 +172,7 @@ private fun EditUsuario(
             selectedDateISO = isoFormatter.format(Date(millis))
         }
     }
-    
+
     // Manejar errores y mensajes de éxito
     LaunchedEffect(uiState.error) {
         uiState.error?.let { error ->
@@ -186,19 +187,18 @@ private fun EditUsuario(
     }
 
     LaunchedEffect(uiState.successMessage) {
-        uiState.successMessage?.let { message ->
-            scope.launch {
-                snackbarHostState.showSnackbar(
-                    message = message,
-                    duration = SnackbarDuration.Short
-                )
-                viewModel.clearSuccessMessage()
-                // Volver atrás después de actualizar exitosamente
-                navController.popBackStack()
-            }
+        uiState.successMessage?.let {
+            showSuccessOverlay = true
+
+            kotlinx.coroutines.delay(1200)
+
+            showSuccessOverlay = false
+            viewModel.clearSuccessMessage()
+            navController.popBackStack()
         }
     }
-    
+
+
     // Función para validar y actualizar usuario
     fun updateUser() {
         if (selectedRole.isEmpty()) {
@@ -210,7 +210,7 @@ private fun EditUsuario(
             }
             return
         }
-        
+
         val request = UpdateUserRequest(
             role = roleLabelToApi(selectedRole),
             displayName = user.displayName,
@@ -218,7 +218,7 @@ private fun EditUsuario(
             entryDate = selectedDateISO,
             attendance = null
         )
-        
+
         user.uid?.let { uid ->
             viewModel.updateUser(uid, request)
         }
@@ -228,26 +228,59 @@ private fun EditUsuario(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = bgColor,
         topBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(surfaceColor)
-                    .statusBarsPadding()
-                    .padding(top = 12.dp, bottom = 12.dp, start = 8.dp, end = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Atrás", tint = textColor)
-                }
-                Text(
-                    text = "Editar Usuario",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = textColor,
-                    modifier = Modifier.padding(start = 8.dp)
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Editar Usuario",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = textColor
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Atrás", tint = textColor)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = bgColor
                 )
+            )
+            if (showSuccessOverlay) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.35f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .size(180.dp)
+                            .background(OrangePrimary, shape = RoundedCornerShape(90.dp))
+                            .padding(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(60.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Text(
+                            text = "Editado",
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
+
         }
+
     ) { paddingValues ->
 
         Column(

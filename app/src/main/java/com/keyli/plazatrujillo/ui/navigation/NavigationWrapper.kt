@@ -41,7 +41,8 @@ fun NavigationWrapper(
         "report_incidencias", "profile",
     )
 
-    val showBars = currentRoute !in fullScreenRoutes
+    val showBars = fullScreenRoutes.none { currentRoute.startsWith(it) }
+
 
     LaunchedEffect(currentRoute) {
         if (drawerState.isOpen) drawerState.close()
