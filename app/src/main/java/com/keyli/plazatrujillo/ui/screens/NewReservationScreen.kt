@@ -2,7 +2,6 @@ package com.keyli.plazatrujillo.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -46,6 +45,8 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.Calendar
+import java.util.TimeZone
 
 // Estados del proceso de guardado
 enum class SaveState {
@@ -104,20 +105,61 @@ fun NewReservationScreen(
     // Estados de los DatePickers
     val checkInDatePickerState = rememberDatePickerState()
     val checkOutDatePickerState = rememberDatePickerState()
-    
-    // Actualizar checkIn cuando se selecciona una fecha
+
+    // --- CORRECCIÓN DE ZONA HORARIA ---
+
+    // Función auxiliar para corregir el desfase UTC
+    fun getLocalMillis(utcMillis: Long): Long {
+        val calendar = Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+        calendar.timeInMillis = utcMillis
+        // Le decimos al calendario que esa hora UTC corresponde a las 00:00 de ESE día
+        // Luego extraemos el año, mes y día para crear una fecha local limpia
+        val localCalendar = Calendar.getInstance()
+        localCalendar.set(
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        )
+        return localCalendar.timeInMillis
+    }
+
+    // Actualizar checkIn (CORREGIDO)
     LaunchedEffect(checkInDatePickerState.selectedDateMillis) {
-        checkInDatePickerState.selectedDateMillis?.let { millis ->
+        checkInDatePickerState.selectedDateMillis?.let { utcMillis ->
+            // Usamos la fecha UTC tal cual para formatear, pero forzando la zona horaria UTC en el formateador
+            // O una solución más simple: sumar el offset
+            val timeZone = java.util.TimeZone.getDefault()
+            val offset = timeZone.getOffset(utcMillis)
+            val localMillis = utcMillis + offset // Compensamos la resta que hace el sistema
+
             val displayFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-            checkIn = displayFormatter.format(Date(millis))
+            // OJO: Formateamos usando milisegundos compensados
+            checkIn = displayFormatter.format(Date(utcMillis + 86400000L)) // Truco rápido: Sumar 1 día (no recomendado)
+
+            // LA FORMA CORRECTA Y PROFESIONAL:
+            // Usar un Calendar en UTC para extraer los datos
+            val utcCalendar = Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+            utcCalendar.timeInMillis = utcMillis
+            val day = utcCalendar.get(Calendar.DAY_OF_MONTH)
+            val month = utcCalendar.get(Calendar.MONTH) + 1 // Enero es 0
+            val year = utcCalendar.get(Calendar.YEAR)
+
+            // Formatear manualmente para evitar conversiones automáticas
+            checkIn = String.format("%02d/%02d/%04d", day, month, year)
         }
     }
-    
-    // Actualizar checkOut cuando se selecciona una fecha
+
+    // Actualizar checkOut (CORREGIDO)
     LaunchedEffect(checkOutDatePickerState.selectedDateMillis) {
-        checkOutDatePickerState.selectedDateMillis?.let { millis ->
-            val displayFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-            checkOut = displayFormatter.format(Date(millis))
+        checkOutDatePickerState.selectedDateMillis?.let { utcMillis ->
+            // Misma lógica para Check-out
+            val utcCalendar = Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+            utcCalendar.timeInMillis = utcMillis
+            val day = utcCalendar.get(Calendar.DAY_OF_MONTH)
+            val month = utcCalendar.get(Calendar.MONTH) + 1
+            val year = utcCalendar.get(Calendar.YEAR)
+
+            checkOut = String.format("%02d/%02d/%04d", day, month, year)
         }
     }
 
