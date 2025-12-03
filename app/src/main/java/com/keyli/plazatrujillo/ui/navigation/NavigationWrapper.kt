@@ -14,6 +14,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.*
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.keyli.plazatrujillo.ui.viewmodel.UserViewModel
 import com.keyli.plazatrujillo.R
 import com.keyli.plazatrujillo.ui.components.AppDrawer
 import com.keyli.plazatrujillo.ui.screens.*
@@ -35,7 +37,7 @@ fun NavigationWrapper(
     // 1. AGREGA "recovery" AQUI PARA QUE NO SALGA EL MENÚ
     val fullScreenRoutes = listOf(
         "login", "recovery", "new_reservation", "new_reservation_screen", "new_movement",
-        "new_comanda", "new_usuario", "register_briquetas", "bloq_habitacion",
+        "new_comanda", "new_usuario", "edit_usuario", "register_briquetas", "bloq_habitacion",
         "report_incidencias", "profile",
     )
 
@@ -90,6 +92,10 @@ fun NavigationWrapper(
             composable("lavanderia") { LavanderiaScreen(navController) }
             composable("comanda_screen") { ComandaScreen(navController) }
             composable("new_usuario") { NewUsuario(navController) }
+            composable("edit_usuario/{uid}") { backStackEntry ->
+                val uid = backStackEntry.arguments?.getString("uid") ?: ""
+                EditUsuarioScreen(navController, uid)
+            }
             composable("new_reservation") { NewReservationScreen(navController) }
             composable("mantenimiento") { MantenimientoScreen(navController) }
             composable("register_briquetas") { RegisterBriquetasScreen(navController) }

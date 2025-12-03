@@ -2,12 +2,9 @@
 
 package com.keyli.plazatrujillo.ui.screens
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -24,24 +21,24 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.keyli.plazatrujillo.ui.theme.*
+import com.keyli.plazatrujillo.ui.viewmodel.DashboardViewModel
+import com.keyli.plazatrujillo.data.model.*
 import java.text.DecimalFormat
 
 // --- COLORES ESPECÍFICOS ---
@@ -57,6 +54,27 @@ fun DashboardScreen(
     isDarkTheme: Boolean,
     onToggleTheme: () -> Unit
 ) {
+    // ViewModel para obtener datos de la API
+    val viewModel: DashboardViewModel = viewModel()
+    val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Cargar datos cuando se inicia la pantalla
+    LaunchedEffect(Unit) {
+        viewModel.loadDashboardData()
+    }
+    
+    // Manejar errores
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
+            snackbarHostState.showSnackbar(
+                message = error,
+                duration = SnackbarDuration.Long
+            )
+            viewModel.clearError()
+        }
+    }
+    
     val scrollState = rememberScrollState()
 
     // Estados para los menús
@@ -69,61 +87,133 @@ fun DashboardScreen(
     val menuBgColor = if (isDarkTheme) Color(0xFF2C2C2C) else Color.White
     val cardBgColor = if (isDarkTheme) Color(0xFF1E1E1E) else Color.White
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = {
+            if (!uiState.isLoading) {
+                FloatingActionButton(
+                    onClick = { viewModel.refresh() },
+                    containerColor = OrangePrimary
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Refrescar")
+                }
+            }
+        }
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            // 1. CONTENIDO PRINCIPAL
+            if (uiState.isLoading && uiState.metrics == null) {
+                // Mostrar indicador de carga inicial
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = OrangePrimary
+                )
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(backgroundColor)
+                        .padding(paddingValues)
+                        .padding(16.dp)
+                        .verticalScroll(scrollState)
+                ) {
+                    // CABECERA
+                    DashboardHeader(
+                        isDarkTheme = isDarkTheme,
+                        onToggleTheme = onToggleTheme,
+                        textColor = textColor,
+                        subTextColor = subTextColor,
+                        onProfileClick = { showProfileMenu = true },
+                        onNotificationClick = { showNotifications = true }
+                    )
 
-        // 1. CONTENIDO PRINCIPAL
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(backgroundColor)
-                .padding(16.dp)
-                .verticalScroll(scrollState)
-        ) {
-            // CABECERA
-            DashboardHeader(
-                isDarkTheme = isDarkTheme,
-                onToggleTheme = onToggleTheme,
-                textColor = textColor,
-                subTextColor = subTextColor,
-                onProfileClick = { showProfileMenu = true },
-                onNotificationClick = { showNotifications = true }
-            )
+                    Spacer(modifier = Modifier.height(24.dp))
 
-            Spacer(modifier = Modifier.height(24.dp))
+                    // KPIs con datos reales
+                    KpiSection(
+                        isDarkTheme = isDarkTheme,
+                        metrics = uiState.metrics
+                    )
 
-            // KPIs
-            KpiSection(isDarkTheme)
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    // Gráfico de ingresos mensuales con datos reales
+                    MonthlyIncomeChart(
+                        cardBgColor, 
+                        textColor,
+                        monthlyRevenue = uiState.monthlyRevenue
+                    )
 
-            Spacer(modifier = Modifier.height(24.dp))
-            MonthlyIncomeChart(cardBgColor, textColor)
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    // Gráfico de ingresos anuales con datos reales
+                    IncomeVsExpensesChart(
+                        cardBgColor, 
+                        textColor,
+                        statistics = uiState.statistics
+                    )
 
-            Spacer(modifier = Modifier.height(24.dp))
-            IncomeVsExpensesChart(cardBgColor, textColor)
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    // Métodos de pago con datos reales
+                    PaymentMethodChart(
+                        cardBgColor, 
+                        textColor,
+                        paymentMethods = uiState.paymentMethods
+                    )
 
-            Spacer(modifier = Modifier.height(24.dp))
-            PaymentMethodChart(cardBgColor, textColor)
+                    Spacer(modifier = Modifier.height(24.dp))
 
-            Spacer(modifier = Modifier.height(24.dp))
+                    // Gráfico de ocupación semanal con datos reales
+                    OccupancyChart(
+                        cardBgColor, 
+                        textColor,
+                        occupancyData = uiState.occupancyWeekly
+                    )
 
-            // --- NUEVO: GRÁFICO OCUPACIÓN SEMANAL ---
-            OccupancyChart(cardBgColor, textColor)
+                    Spacer(modifier = Modifier.height(24.dp))
 
-            Spacer(modifier = Modifier.height(24.dp))
+                    // Check-ins de hoy con datos reales
+                    TodayCheckIns(
+                        cardBgColor, 
+                        textColor, 
+                        isDarkTheme,
+                        checkins = uiState.todayCheckinsCheckouts?.checkins
+                    )
 
-            // --- NUEVO: CHECK-IN DE HOY ---
-            TodayCheckIns(cardBgColor, textColor, isDarkTheme)
+                    Spacer(modifier = Modifier.height(24.dp))
 
-            Spacer(modifier = Modifier.height(24.dp))
+                    // Check-outs de hoy con datos reales
+                    TodayCheckOuts(
+                        cardBgColor, 
+                        textColor, 
+                        isDarkTheme,
+                        checkouts = uiState.todayCheckinsCheckouts?.checkouts
+                    )
 
-            // --- AGREGADO: CHECK-OUT DE HOY ---
-            TodayCheckOuts(cardBgColor, textColor, isDarkTheme)
+                    Spacer(modifier = Modifier.height(24.dp))
 
-            Spacer(modifier = Modifier.height(24.dp))
+                    // Reservas recientes con datos reales
+                    RecentReservations(
+                        cardBgColor, 
+                        textColor, 
+                        isDarkTheme,
+                        reservations = uiState.recentReservations
+                    )
 
-            // --- NUEVO: RESERVAS RECIENTES ---
-            RecentReservations(cardBgColor, textColor, isDarkTheme)
-
-            Spacer(modifier = Modifier.height(80.dp))
+                    Spacer(modifier = Modifier.height(80.dp))
+                }
+            }
+            
+            // Indicador de carga cuando se está refrescando
+            if (uiState.isLoading && uiState.metrics != null) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter),
+                    color = OrangePrimary
+                )
+            }
         }
 
         // 2. MENÚS FLOTANTES (Perfil y Notificaciones)
@@ -174,7 +264,11 @@ fun DashboardScreen(
 
 // 1. TASA DE OCUPACIÓN SEMANAL (Diseño exacto de imagen)
 @Composable
-fun OccupancyChart(cardBg: Color, text: Color) {
+fun OccupancyChart(
+    cardBg: Color, 
+    text: Color,
+    occupancyData: List<Double> = emptyList()
+) {
     Card(
         colors = CardDefaults.cardColors(containerColor = cardBg),
         shape = RoundedCornerShape(16.dp),
@@ -193,12 +287,19 @@ fun OccupancyChart(cardBg: Color, text: Color) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Bottom // Todo se alinea a la base
             ) {
-                // Datos exactos de la imagen (Porcentaje)
-                val data = listOf(
-                    Pair("Lun", 65), Pair("Mar", 70), Pair("Mié", 68),
-                    Pair("Jue", 75), Pair("Vie", 80), Pair("Sáb", 85),
-                    Pair("Dom", 72) // Agregué Domingo para completar la semana
-                )
+                // Usar datos reales si están disponibles
+                val days = listOf("Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom")
+                val data = if (occupancyData.isNotEmpty()) {
+                    occupancyData.take(7).mapIndexed { index, value ->
+                        Pair(days.getOrNull(index) ?: "", value.toInt())
+                    }
+                } else {
+                    listOf(
+                        Pair("Lun", 65), Pair("Mar", 70), Pair("Mié", 68),
+                        Pair("Jue", 75), Pair("Vie", 80), Pair("Sáb", 85),
+                        Pair("Dom", 72)
+                    )
+                }
                 val maxVal = 100f // Escala sobre 100%
 
                 data.forEach { (day, value) ->
@@ -261,7 +362,12 @@ fun OccupancyChart(cardBg: Color, text: Color) {
 
 // 2. CHECK-IN DE HOY (Lista con iconos azules)
 @Composable
-fun TodayCheckIns(cardBg: Color, text: Color, dark: Boolean) {
+fun TodayCheckIns(
+    cardBg: Color, 
+    text: Color, 
+    dark: Boolean,
+    checkins: List<CheckinCheckoutItem>? = null
+) {
     Card(
         colors = CardDefaults.cardColors(containerColor = cardBg),
         shape = RoundedCornerShape(16.dp),
@@ -269,11 +375,25 @@ fun TodayCheckIns(cardBg: Color, text: Color, dark: Boolean) {
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Text("Check-in de Hoy", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = text)
-            Text("Huéspedes que ingresan hoy", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 20.dp))
+            Text("Huéspedes programados para llegar hoy", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 20.dp))
 
-            CheckInItem("14:00", "Juan Pérez", "Hab. 101", text)
-            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 12.dp))
-            CheckInItem("15:30", "María López", "Hab. 205", text)
+            if (checkins.isNullOrEmpty()) {
+                CheckInItem("14:00", "Juan Pérez", "Hab. 101", text)
+                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 12.dp))
+                CheckInItem("15:30", "María López", "Hab. 205", text)
+            } else {
+                checkins.forEachIndexed { index, checkin ->
+                    if (index > 0) {
+                        HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 12.dp))
+                    }
+                    CheckInItem(
+                        checkin.time ?: "",
+                        checkin.name ?: "",
+                        checkin.room ?: "",
+                        text
+                    )
+                }
+            }
         }
     }
 }
@@ -306,7 +426,12 @@ fun CheckInItem(time: String, name: String, room: String, textColor: Color) {
 
 // --- AGREGADO: CHECK-OUT DE HOY ---
 @Composable
-fun TodayCheckOuts(cardBg: Color, text: Color, dark: Boolean) {
+fun TodayCheckOuts(
+    cardBg: Color, 
+    text: Color, 
+    dark: Boolean,
+    checkouts: List<CheckinCheckoutItem>? = null
+) {
     Card(
         colors = CardDefaults.cardColors(containerColor = cardBg),
         shape = RoundedCornerShape(16.dp),
@@ -314,11 +439,25 @@ fun TodayCheckOuts(cardBg: Color, text: Color, dark: Boolean) {
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Text("Check-out de Hoy", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = text)
-            Text("Huéspedes que salen hoy", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 20.dp))
+            Text("Huéspedes programados para salir hoy", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 20.dp))
 
-            CheckOutItem("11:00", "Carlos Ruiz", "Hab. 302", text)
-            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 12.dp))
-            CheckOutItem("12:00", "Elena Gomez", "Hab. 104", text)
+            if (checkouts.isNullOrEmpty()) {
+                CheckOutItem("11:00", "Carlos Ruiz", "Hab. 302", text)
+                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 12.dp))
+                CheckOutItem("12:00", "Elena Gomez", "Hab. 104", text)
+            } else {
+                checkouts.forEachIndexed { index, checkout ->
+                    if (index > 0) {
+                        HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 12.dp))
+                    }
+                    CheckOutItem(
+                        checkout.time ?: "",
+                        checkout.name ?: "",
+                        checkout.room ?: "",
+                        text
+                    )
+                }
+            }
         }
     }
 }
@@ -351,7 +490,12 @@ fun CheckOutItem(time: String, name: String, room: String, textColor: Color) {
 
 // 3. RESERVAS RECIENTES (Lista con estados de color)
 @Composable
-fun RecentReservations(cardBg: Color, text: Color, dark: Boolean) {
+fun RecentReservations(
+    cardBg: Color, 
+    text: Color, 
+    dark: Boolean,
+    reservations: List<RecentReservationItem> = emptyList()
+) {
     Card(
         colors = CardDefaults.cardColors(containerColor = cardBg),
         shape = RoundedCornerShape(16.dp),
@@ -367,22 +511,37 @@ fun RecentReservations(cardBg: Color, text: Color, dark: Boolean) {
                     Text("Reservas Recientes", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = text)
                     Text("Últimas 5 reservas confirmadas", color = Color.Gray, fontSize = 12.sp)
                 }
-                Icon(Icons.Default.MoreVert, contentDescription = null, tint = Color.Black)
+                Icon(Icons.Default.MoreVert, contentDescription = null, tint = if (dark) Color.White else Color.Black)
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
             // Lista de Reservas
-            ReservationItem("Ana Torres", "Reserva #1056", "20/11/2025", "Confirmada", StatusGreen, text)
-            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 12.dp))
-
-            ReservationItem("Luis Vidal", "Reserva #1055", "19/11/2025", "Confirmada", StatusGreen, text)
-            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 12.dp))
-
-            ReservationItem("Carla Soto", "Reserva #1054", "19/11/2025", "Pendiente", Color(0xFFFFC107), text)
-            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 12.dp))
-
-            ReservationItem("Pedro Díaz", "Reserva #1053", "18/11/2025", "Cancelada", StatusRed, text)
+            if (reservations.isEmpty()) {
+                ReservationItem("Ana Torres", "Reserva #1056", "20/11/2025", "Confirmada", StatusGreen, text)
+                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 12.dp))
+                ReservationItem("Luis Vidal", "Reserva #1055", "19/11/2025", "Confirmada", StatusGreen, text)
+            } else {
+                reservations.take(5).forEachIndexed { index, reservation ->
+                    if (index > 0) {
+                        HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 12.dp))
+                    }
+                    val statusColor = when (reservation.status?.lowercase()) {
+                        "confirmada", "check-in" -> StatusGreen
+                        "pendiente" -> Color(0xFFFFC107)
+                        "cancelada", "check-out" -> StatusRed
+                        else -> Color.Gray
+                    }
+                    ReservationItem(
+                        reservation.guestName ?: "",
+                        "Reserva #${reservation.id ?: ""}",
+                        reservation.checkIn ?: "",
+                        reservation.status ?: "",
+                        statusColor,
+                        text
+                    )
+                }
+            }
         }
     }
 }
@@ -512,16 +671,19 @@ fun NotificationItem(name: String, time: String, highlightColor: Color, textColo
 
 /* --- KPI SECTION --- */
 @Composable
-fun KpiSection(isDarkTheme: Boolean) {
+fun KpiSection(
+    isDarkTheme: Boolean,
+    metrics: DashboardMetricsResponse? = null
+) {
     val cardBg = if (isDarkTheme) DarkSurface else LightSurface
     val textColor = if (isDarkTheme) TextWhite else TextBlack
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         KpiCard(
             "Ingresos Mensuales",
-            "S/ 45,280",
-            "12.5%",
-            true,
+            metrics?.monthlyRevenue?.amount?.let { formatCurrency(it.toInt()) } ?: "S/ 0",
+            metrics?.monthlyRevenue?.changePercent?.let { "${if (it >= 0) "+" else ""}${String.format("%.1f", it)}%" } ?: "0%",
+            (metrics?.monthlyRevenue?.changePercent ?: 0.0) >= 0,
             Icons.Default.AttachMoney,
             Color(0xFFFFF3E0),
             OrangePrimary,
@@ -530,9 +692,9 @@ fun KpiSection(isDarkTheme: Boolean) {
         )
         KpiCard(
             "Ingresos Totales",
-            "S/ 385,290",
-            "8.3%",
-            true,
+            metrics?.totalRevenue?.amount?.let { formatCurrency(it.toInt()) } ?: "S/ 0",
+            metrics?.totalRevenue?.changePercent?.let { "${if (it >= 0) "+" else ""}${String.format("%.1f", it)}%" } ?: "0%",
+            (metrics?.totalRevenue?.changePercent ?: 0.0) >= 0,
             Icons.Default.GridView,
             Color(0xFFFFF8E1),
             Color(0xFFFFC107),
@@ -541,9 +703,9 @@ fun KpiSection(isDarkTheme: Boolean) {
         )
         KpiCard(
             "Tasa de Ocupación",
-            "78.5%",
-            "5.2%",
-            true,
+            metrics?.occupancyRate?.rate?.let { "${it.toInt()}%" } ?: "0%",
+            metrics?.occupancyRate?.changePercent?.let { "${if (it >= 0) "+" else ""}${String.format("%.1f", it)}%" } ?: "0%",
+            (metrics?.occupancyRate?.changePercent ?: 0.0) >= 0,
             Icons.Default.Home,
             Color(0xFFE8F5E9),
             StatusGreen,
@@ -552,9 +714,9 @@ fun KpiSection(isDarkTheme: Boolean) {
         )
         KpiCard(
             "ADR Promedio",
-            "S/ 245",
-            "4.8%",
-            true,
+            metrics?.adr?.amount?.let { formatCurrency(it.toInt()) } ?: "S/ 0",
+            metrics?.adr?.changePercent?.let { "${if (it >= 0) "+" else ""}${String.format("%.1f", it)}%" } ?: "0%",
+            (metrics?.adr?.changePercent ?: 0.0) >= 0,
             Icons.Default.Calculate,
             Color(0xFFEFEBE9),
             Color(0xFF795548),
@@ -633,9 +795,18 @@ fun KpiCard(
 
 /* --- MonthlyIncomeChart --- */
 @Composable
-fun MonthlyIncomeChart(cardBg: Color, text: Color) {
+fun MonthlyIncomeChart(
+    cardBg: Color, 
+    text: Color,
+    monthlyRevenue: List<Double> = emptyList()
+) {
     val months = listOf("Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Set","Oct","Nov","Dic")
-    val values = listOf(26000, 28000, 30000, 34000, 36000, 32000, 38000, 41000, 39000, 43000, 40000, 42000)
+    // Usar datos reales si están disponibles, sino usar datos por defecto
+    val values = if (monthlyRevenue.isNotEmpty()) {
+        monthlyRevenue.take(12).map { it.toInt() }
+    } else {
+        listOf(26000, 28000, 30000, 34000, 36000, 32000, 38000, 41000, 39000, 43000, 40000, 42000)
+    }
 
     var selected by remember { mutableStateOf(-1) }
     val max = (values.maxOrNull() ?: 1).toFloat()
@@ -665,68 +836,80 @@ fun MonthlyIncomeChart(cardBg: Color, text: Color) {
                     }
                 }
 
-                // Chart area
+                // Chart area - Gráfico de barras
                 Box(modifier = Modifier.weight(1f)) {
-                    Canvas(modifier = Modifier.height(220.dp).fillMaxWidth()) {
-                        val w = size.width
-                        val h = size.height
+                    // Contenedor principal del gráfico de barras
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp)
+                            .padding(horizontal = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        values.forEachIndexed { index, value ->
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .clickable { selected = if (selected == index) -1 else index }
+                            ) {
+                                // Etiqueta de valor (opcional, se muestra al seleccionar)
+                                if (selected == index) {
+                                    Text(
+                                        text = formatCurrency(value),
+                                        fontSize = 10.sp,
+                                        color = text,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                }
 
-                        // Gridlines
+                                // Contenedor para la barra
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxWidth(),
+                                    contentAlignment = Alignment.BottomCenter
+                                ) {
+                                    // Línea base gris
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(1.dp)
+                                            .background(Color.LightGray.copy(alpha = 0.3f))
+                                    )
+
+                                    // Barra naranja
+                                    Box(
+                                        modifier = Modifier
+                                            .width(24.dp)
+                                            .fillMaxHeight((value / max).coerceIn(0f, 1f))
+                                            .background(OrangePrimary, RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                    )
+                                }
+
+                                // Espaciador entre barra y mes
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                // Etiqueta del mes
+                                Text(
+                                    months.getOrNull(index) ?: "",
+                                    fontSize = 11.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+                    }
+
+                    // Líneas de cuadrícula horizontales
+                    Canvas(modifier = Modifier.fillMaxSize()) {
                         val grid = Color.LightGray.copy(alpha = 0.18f)
                         for (i in 0..4) {
-                            val y = h * (i / 4f)
-                            drawLine(grid, Offset(0f, y), Offset(w, y), strokeWidth = 1f)
-                        }
-
-                        val step = w / (values.size - 1).coerceAtLeast(1)
-                        val areaPath = Path()
-                        values.forEachIndexed { i, v ->
-                            val x = i * step
-                            val y = h - (v / max) * h
-                            if (i == 0) areaPath.moveTo(x, y) else areaPath.lineTo(x, y)
-                        }
-                        areaPath.lineTo(w, h)
-                        areaPath.lineTo(0f, h)
-                        areaPath.close()
-
-                        drawPath(
-                            areaPath,
-                            Brush.verticalGradient(listOf(OrangePrimary.copy(alpha = 0.18f), OrangeSecondary.copy(alpha = 0.06f))),
-                            style = Fill
-                        )
-
-                        val linePath = Path()
-                        values.forEachIndexed { i, v ->
-                            val x = i * step
-                            val y = h - (v / max) * h
-                            if (i == 0) linePath.moveTo(x, y) else linePath.lineTo(x, y)
-                            drawCircle(Color.White, radius = 4f, center = Offset(x, y))
-                            drawCircle(OrangePrimary, radius = 2f, center = Offset(x, y))
-                        }
-                        drawPath(linePath, OrangePrimary, style = Stroke(width = 3f, cap = StrokeCap.Round))
-                    }
-
-                    // X axis labels
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        months.forEachIndexed { i, m ->
-                            Text(m, fontSize = 11.sp, color = Color.Gray)
-                        }
-                    }
-
-                    // Tooltip
-                    if (selected in values.indices) {
-                        val idx = selected
-                        val label = formatCurrency(values[idx])
-                        Box(
-                            modifier = Modifier
-                                .offset(x = ((selected / (months.size - 1).toFloat()) * (LocalDensity.current.run { (300).toDp().toPx() })).dp)
-                                .background(cardBg, RoundedCornerShape(8.dp))
-                                .padding(8.dp)
-                        ) {
-                            Text(label, color = OrangePrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            val y = size.height * (i / 4f)
+                            drawLine(grid, Offset(0f, y), Offset(size.width, y), strokeWidth = 1f)
                         }
                     }
                 }
@@ -737,13 +920,18 @@ fun MonthlyIncomeChart(cardBg: Color, text: Color) {
 
 /* --- INGRESOS ANUALES (Modificado: Antes Ingresos vs Gastos) --- */
 @Composable
-fun IncomeVsExpensesChart(cardBg: Color, text: Color) {
-    // NOTA: Se mantiene el nombre de la función para compatibilidad,
-    // pero ahora muestra "Ingresos Anuales" (12 meses) con diseño similar al mensual.
-
-    val months = listOf("Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Set","Oct","Nov","Dic")
-    // Datos anuales acumulados o proyectados (diferentes al mensual para el ejemplo)
-    val values = listOf(320000, 340000, 360000, 350000, 380000, 400000, 410000, 420000, 435000, 450000, 460000, 480000)
+fun IncomeVsExpensesChart(
+    cardBg: Color, 
+    text: Color,
+    statistics: StatisticsResponse? = null
+) {
+    // Usar datos reales del endpoint de statistics si están disponibles
+    val labels = statistics?.labels?.take(12) ?: listOf("Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Set","Oct","Nov","Dic")
+    val values = if (statistics?.income != null && statistics.income.isNotEmpty()) {
+        statistics.income.take(12).map { it.toInt() }
+    } else {
+        listOf(320000, 340000, 360000, 350000, 380000, 400000, 410000, 420000, 435000, 450000, 460000, 480000)
+    }
 
     val max = (values.maxOrNull() ?: 1).toFloat()
     var selected by remember { mutableStateOf(-1) }
@@ -827,8 +1015,8 @@ fun IncomeVsExpensesChart(cardBg: Color, text: Color) {
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        months.forEachIndexed { i, m ->
-                            // Mostramos solo meses impares si el espacio es reducido, o todos
+                        labels.forEachIndexed { i, m ->
+                            // Mostramos todos los meses de las etiquetas recibidas
                             Text(m, fontSize = 11.sp, color = Color.Gray)
                         }
                     }
@@ -850,12 +1038,26 @@ fun LegendItem(text: String, color: Color) {
 
 /* --- PaymentMethodChart: anillo (donut) con porcentajes y leyenda con % --- */
 @Composable
-fun PaymentMethodChart(cardBg: Color, text: Color) {
+fun PaymentMethodChart(
+    cardBg: Color, 
+    text: Color,
+    paymentMethods: Map<String, Double> = emptyMap()
+) {
     val labels = listOf("Efectivo","Tarjeta","Yape","Transferencia")
-    val values = listOf(20376f,13584f,4792f,4248f)
+    // Usar datos reales si están disponibles
+    val values = if (paymentMethods.isNotEmpty()) {
+        listOf(
+            (paymentMethods["Efectivo"] ?: 0.0).toFloat(),
+            (paymentMethods["Tarjeta"] ?: 0.0).toFloat(),
+            (paymentMethods["Yape"] ?: 0.0).toFloat(),
+            (paymentMethods["Transferencia"] ?: 0.0).toFloat()
+        )
+    } else {
+        listOf(20376f,13584f,4792f,4248f)
+    }
     val colors = listOf(PiePurple, PieGreen, PieBlue, PieOrange)
     val total = values.sum()
-    val pct = values.map { (it / total * 100f) }
+    val pct = if (total > 0) values.map { (it / total * 100f) } else listOf(0f, 0f, 0f, 0f)
 
     var selected by remember { mutableStateOf(-1) }
 

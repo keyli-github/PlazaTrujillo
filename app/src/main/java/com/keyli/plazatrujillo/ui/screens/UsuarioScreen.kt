@@ -13,9 +13,11 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,8 +27,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.keyli.plazatrujillo.data.model.User
 import com.keyli.plazatrujillo.ui.theme.*
+import com.keyli.plazatrujillo.ui.viewmodel.UserViewModel
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 // --- CONFIGURACIÓN DE ANCHOS DE TABLA (AJUSTADOS) ---
 object UserTableConfig {
@@ -37,19 +44,52 @@ object UserTableConfig {
     val WidthActions = 130.dp // Antes 100 (Aumentado para que quepan 3 iconos)
 }
 
-// Data Class
-data class PersonalUI(
-    val id: Int,
-    val name: String,
-    val email: String,
-    val role: String,
-    val salary: String,
-    val entryDate: String,
-    val isActive: Boolean
-)
+// Helper functions
+private fun formatRole(role: String?): String {
+    return when (role?.lowercase()) {
+        "admin" -> "Administrador"
+        "receptionist" -> "Recepcionista"
+        "housekeeping" -> "Hotelero"
+        else -> role ?: "Sin rol"
+    }
+}
+
+private fun formatSalary(salary: String?): String {
+    return if (salary.isNullOrBlank()) {
+        "S/ 0.00"
+    } else {
+        try {
+            val amount = salary.toDouble()
+            "S/ ${String.format("%.2f", amount)}"
+        } catch (e: Exception) {
+            salary
+        }
+    }
+}
+
+private fun formatDate(dateString: String?): String {
+    if (dateString.isNullOrBlank()) return "--/--/----"
+    return try {
+        // Intentar parsear formato ISO (YYYY-MM-DD)
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val outputFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+        val date = inputFormat.parse(dateString)
+        if (date != null) {
+            outputFormat.format(date)
+        } else {
+            dateString
+        }
+    } catch (e: Exception) {
+        dateString
+    }
+}
 
 @Composable
 fun UsuarioScreen(navController: NavHostController) {
+    // ViewModel
+    val viewModel: UserViewModel = viewModel()
+    val uiState by viewModel.uiState.collectAsState()
+    
     // --- COLORES DINÁMICOS ---
     val bgColor = MaterialTheme.colorScheme.background
     val surfaceColor = MaterialTheme.colorScheme.surface
@@ -59,39 +99,80 @@ fun UsuarioScreen(navController: NavHostController) {
 
     // --- ESTADOS Y LÓGICA ---
     var search by remember { mutableStateOf("") }
+    var showDeleteDialog by remember { mutableStateOf<User?>(null) }
+    var showEditDialog by remember { mutableStateOf<User?>(null) }
     val scrollState = rememberScrollState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    // Usamos mutableStateListOf para que la UI se actualice al cambiar el estado
-    val usersList = remember {
-        mutableStateListOf(
-            PersonalUI(1,"Marco Gutierrez","marco.gutierrez@plaza.com","Administrador","S/ 3,500","15/01/24",true),
-            PersonalUI(2,"Frank Castro","frank.castro@plaza.com","Recepcionista","S/ 2,200","20/02/24",true),
-            PersonalUI(3,"Keyli Roncal","keyli.roncal@plaza.com","Mantenimiento","S/ 1,800","10/03/24",true),
-            PersonalUI(4,"Karina Guerrero","karina.guerrero@plaza.com","Administrador","S/ 3,500","05/04/24",true),
-            PersonalUI(5,"Cristian Zavaleta","cristian.zavaleta@plaza.com","Seguridad","S/ 1,900","12/04/24",false),
-            PersonalUI(6,"Luis Alonso","luis.alonso@plaza.com","Logística","S/ 2,500","01/05/24",true)
-        )
+    // Cargar usuarios al iniciar
+    LaunchedEffect(Unit) {
+        viewModel.loadUsers()
+    }
+    
+    // Recargar cuando regrese de crear/editar usuario
+    // Usando un DisposableEffect para escuchar cambios en el back stack
+    DisposableEffect(navController) {
+        val listener = androidx.navigation.NavController.OnDestinationChangedListener { controller, destination, arguments ->
+            // Si estamos en la pantalla de usuarios, refrescar la lista
+            if (destination.route == "usuarios") {
+                viewModel.loadUsers()
+            }
+        }
+        navController.addOnDestinationChangedListener(listener)
+        onDispose {
+            navController.removeOnDestinationChangedListener(listener)
+        }
+    }
+
+    // Manejar errores y mensajes de éxito
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    message = error,
+                    duration = SnackbarDuration.Long
+                )
+                viewModel.clearError()
+            }
+        }
+    }
+
+    LaunchedEffect(uiState.successMessage) {
+        uiState.successMessage?.let { message ->
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    message = message,
+                    duration = SnackbarDuration.Short
+                )
+                viewModel.clearSuccessMessage()
+            }
+        }
     }
 
     // Filtro de búsqueda
-    val filteredUsers = usersList.filter {
-        it.name.contains(search, true) || it.email.contains(search, true)
+    val filteredUsers = uiState.users.filter {
+        (it.displayName?.contains(search, true) == true) || 
+        (it.email?.contains(search, true) == true)
+    }
+
+    // Contar cuántos administradores hay en la lista (usar lista completa, no filtrada)
+    val adminCount = remember(uiState.users) {
+        uiState.users.count { it.role?.lowercase() == "admin" }
+    }
+
+    // Verificar si un usuario es el único administrador
+    fun isOnlyAdmin(user: User): Boolean {
+        return user.role?.lowercase() == "admin" && adminCount == 1
     }
 
     // Lógica para cambiar estado (Candado)
-    fun toggleUserStatus(user: PersonalUI) {
-        val index = usersList.indexOfFirst { it.id == user.id }
-        if (index != -1) {
-            val newState = !user.isActive
-            usersList[index] = user.copy(isActive = newState)
-
-            // Mostrar mensaje
-            val action = if (newState) "activado" else "inhabilitado"
+    fun toggleUserStatus(user: User) {
+        user.uid?.let { uid ->
+            viewModel.toggleUserStatus(uid)
             scope.launch {
                 snackbarHostState.showSnackbar(
-                    message = "Usuario ${user.name} $action exitosamente",
+                    message = "Estado actualizado",
                     duration = SnackbarDuration.Short
                 )
             }
@@ -152,17 +233,30 @@ fun UsuarioScreen(navController: NavHostController) {
 
                     Spacer(Modifier.height(16.dp))
 
-                    Button(
-                        onClick = { navController.navigate("new_usuario") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null, tint = Color.White)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Crear Nuevo Usuario", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(
+                            onClick = { viewModel.refresh() },
+                            modifier = Modifier
+                                .weight(0.3f)
+                                .height(52.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = textSecondary)
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.White)
+                        }
+                        
+                        Button(
+                            onClick = { navController.navigate("new_usuario") },
+                            modifier = Modifier
+                                .weight(0.7f)
+                                .height(52.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, tint = Color.White)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Crear Nuevo Usuario", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
                     }
                 }
             }
@@ -187,22 +281,102 @@ fun UsuarioScreen(navController: NavHostController) {
 
                     HorizontalDivider(color = borderColor)
 
-                    UnifiedUserTable(
-                        users = filteredUsers,
-                        onToggleStatus = { toggleUserStatus(it) }
-                    )
+                    if (uiState.isLoading && uiState.users.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(40.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = OrangePrimary)
+                        }
+                    } else {
+                        UnifiedUserTable(
+                            users = filteredUsers,
+                            onToggleStatus = { toggleUserStatus(it) },
+                            onEdit = { showEditDialog = it },
+                            onDelete = { showDeleteDialog = it },
+                            isOnlyAdmin = { isOnlyAdmin(it) }
+                        )
+                    }
                 }
             }
 
             Spacer(Modifier.height(80.dp)) // Espacio final
+        }
+        
+        // Diálogo de confirmación para eliminar (solo si no es el único admin)
+        showDeleteDialog?.let { user ->
+            if (isOnlyAdmin(user)) {
+                // Si intenta eliminar el único administrador, mostrar mensaje y cerrar diálogo
+                LaunchedEffect(user.uid) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "No se puede eliminar el único administrador",
+                            duration = SnackbarDuration.Long
+                        )
+                    }
+                    showDeleteDialog = null
+                }
+            } else {
+                AlertDialog(
+                    onDismissRequest = { showDeleteDialog = null },
+                    title = { Text("Eliminar Usuario", fontWeight = FontWeight.Bold) },
+                    text = {
+                        Text("¿Estás seguro de que deseas eliminar a ${user.displayName ?: user.email}? Esta acción no se puede deshacer.")
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                user.uid?.let { uid ->
+                                    viewModel.deleteUser(uid)
+                                }
+                                showDeleteDialog = null
+                                // La lista se refrescará automáticamente después de eliminar
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = StatusRed)
+                        ) {
+                            Text("Eliminar", color = Color.White)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteDialog = null }) {
+                            Text("Cancelar", color = textSecondary)
+                        }
+                    }
+                )
+            }
+        }
+        
+        // Navegar a pantalla de edición cuando se selecciona un usuario (solo si no es el único admin)
+        LaunchedEffect(showEditDialog) {
+            showEditDialog?.let { user ->
+                if (!isOnlyAdmin(user)) {
+                    user.uid?.let { uid ->
+                        navController.navigate("edit_usuario/$uid")
+                    }
+                } else {
+                    // Mostrar mensaje si intenta editar el único administrador
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "No se puede editar el único administrador",
+                            duration = SnackbarDuration.Long
+                        )
+                    }
+                }
+                showEditDialog = null
+            }
         }
     }
 }
 
 @Composable
 private fun UnifiedUserTable(
-    users: List<PersonalUI>,
-    onToggleStatus: (PersonalUI) -> Unit
+    users: List<User>,
+    onToggleStatus: (User) -> Unit,
+    onEdit: (User) -> Unit,
+    onDelete: (User) -> Unit,
+    isOnlyAdmin: (User) -> Boolean
 ) {
     val hScroll = rememberScrollState()
     val headerBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
@@ -232,11 +406,11 @@ private fun UnifiedUserTable(
 
         if (users.isEmpty()) {
             Box(Modifier.fillMaxWidth().padding(30.dp), contentAlignment = Alignment.Center) {
-                Text("No se encontraron resultados", color = emptyTextColor)
+                Text("No se encontraron usuarios", color = emptyTextColor)
             }
         } else {
             users.forEach { user ->
-                UserRowItem(user, onToggleStatus)
+                UserRowItem(user, onToggleStatus, onEdit, onDelete, isOnlyAdmin)
                 HorizontalDivider(color = borderColor.copy(alpha = 0.5f))
             }
         }
@@ -256,32 +430,61 @@ private fun TableHeader(text: String, width: Dp) {
 
 @Composable
 private fun UserRowItem(
-    user: PersonalUI,
-    onToggleStatus: (PersonalUI) -> Unit
+    user: User,
+    onToggleStatus: (User) -> Unit,
+    onEdit: (User) -> Unit,
+    onDelete: (User) -> Unit,
+    isOnlyAdmin: (User) -> Boolean
 ) {
     val textColor = MaterialTheme.colorScheme.onSurface
     val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
+    val userStatus = getUserStatus(user)
+    val isDisabled = user.disabled == true
+    val userRole = user.role?.lowercase() ?: ""
+    val isAdmin = userRole == "admin"
+    val canToggle = userRole == "receptionist" || userRole == "housekeeping"
+    val onlyAdmin = isOnlyAdmin(user)
 
     Row(
         modifier = Modifier
-            .padding(vertical = 12.dp, horizontal = 12.dp), // Padding más ajustado
+            .padding(vertical = 12.dp, horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Columna: Nombre y Email
         Column(Modifier.width(UserTableConfig.WidthName).padding(end = 8.dp)) {
-            Text(user.name, fontWeight = FontWeight.SemiBold, color = textColor, fontSize = 14.sp)
-            Text(user.email, fontSize = 12.sp, color = textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                user.displayName ?: "Sin nombre", 
+                fontWeight = FontWeight.SemiBold, 
+                color = textColor, 
+                fontSize = 14.sp
+            )
+            Text(
+                user.email ?: "", 
+                fontSize = 12.sp, 
+                color = textSecondary, 
+                maxLines = 1, 
+                overflow = TextOverflow.Ellipsis
+            )
         }
 
         // Columna: Rol y Salario
         Column(Modifier.width(UserTableConfig.WidthRole).padding(end = 8.dp)) {
-            Text(user.role, color = OrangePrimary, fontWeight = FontWeight.Medium, fontSize = 13.sp)
-            Text(user.salary, fontSize = 12.sp, color = textColor)
+            Text(
+                formatRole(user.role), 
+                color = OrangePrimary, 
+                fontWeight = FontWeight.Medium, 
+                fontSize = 13.sp
+            )
+            Text(
+                formatSalary(user.salary), 
+                fontSize = 12.sp, 
+                color = textColor
+            )
         }
 
         // Columna: Fecha
         Text(
-            text = user.entryDate,
+            text = formatDate(user.entryDate),
             modifier = Modifier.width(UserTableConfig.WidthDate),
             fontSize = 13.sp,
             color = textColor
@@ -289,48 +492,85 @@ private fun UserRowItem(
 
         // Columna: Estado
         Box(Modifier.width(UserTableConfig.WidthStatus)) {
-            StatusChip(user.isActive)
+            StatusChip(userStatus)
         }
 
         // Columna: Acciones (Editar, Candado, Eliminar)
         Row(Modifier.width(UserTableConfig.WidthActions)) {
-            // Editar
-            IconButton(onClick = {}, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.Edit, contentDescription = "Editar", tint = textSecondary, modifier = Modifier.size(20.dp))
-            }
-
-            // Candado (Activar/Inactivar)
+            // Editar - deshabilitado si es el único administrador
             IconButton(
-                onClick = { onToggleStatus(user) },
+                onClick = { onEdit(user) },
+                enabled = !onlyAdmin,
                 modifier = Modifier.size(32.dp)
             ) {
-                // Si está activo, mostramos el candado abierto (listo para cerrarse/bloquearse) o viceversa.
-                // Generalmente: Icono representa la ACCIÓN o el ESTADO.
-                // Aquí: Si está activo -> Icono Candado Abierto (es seguro). Al clickear -> Se bloquea.
-                // Si está inactivo -> Icono Candado Cerrado (está bloqueado). Al clickear -> Se desbloquea.
-                val icon = if (user.isActive) Icons.Default.LockOpen else Icons.Default.Lock
-                val tint = if (user.isActive) StatusGreen else StatusRed // Verde si está libre, Rojo si está bloqueado
-
-                Icon(icon, contentDescription = "Cambiar Estado", tint = tint, modifier = Modifier.size(20.dp))
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = if (onlyAdmin) "No se puede editar el único administrador" else "Editar",
+                    tint = if (onlyAdmin) textSecondary.copy(alpha = 0.4f) else textSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
             }
 
-            // Eliminar
-            IconButton(onClick = {}, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = StatusRed, modifier = Modifier.size(20.dp))
+            // Candado (Activar/Inactivar) - solo para recepcionistas y hoteleros
+            if (canToggle) {
+                IconButton(
+                    onClick = { onToggleStatus(user) },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    val icon = if (isDisabled) Icons.Default.Lock else Icons.Default.LockOpen
+                    val tint = if (isDisabled) StatusRed else StatusGreen
+
+                    Icon(
+                        icon,
+                        contentDescription = if (isDisabled) "Habilitar usuario" else "Inhabilitar usuario",
+                        tint = tint,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            // Eliminar - deshabilitado si es el único administrador
+            IconButton(
+                onClick = { onDelete(user) },
+                enabled = !onlyAdmin,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = if (onlyAdmin) "No se puede eliminar el único administrador" else "Eliminar",
+                    tint = if (onlyAdmin) StatusRed.copy(alpha = 0.4f) else StatusRed,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }
 }
 
+// Función para determinar el estado del usuario (igual que React)
+private fun getUserStatus(user: User): String {
+    val isAdmin = user.role?.lowercase() == "admin"
+    
+    return when {
+        user.disabled == true -> "Inhabilitado"
+        !isAdmin && user.emailVerified == false -> "Sin confirmar"
+        else -> "Activo"
+    }
+}
+
 @Composable
-fun StatusChip(isActive: Boolean) {
-    val baseColor = if (isActive) StatusGreen else StatusRed
-    val bgColor = baseColor.copy(alpha = 0.15f) // Fondo un poco más visible
-    val txt = if (isActive) "Activo" else "Inactivo"
+fun StatusChip(status: String) {
+    val (baseColor, txt) = when (status) {
+        "Activo" -> StatusGreen to "Activo"
+        "Inhabilitado" -> StatusRed to "Inhabilitado"
+        "Sin confirmar" -> Color(0xFFFF9800) to "Sin confirmar"  // Naranja/Amarillo
+        else -> Color.Gray to status
+    }
+    
+    val bgColor = baseColor.copy(alpha = 0.15f)
 
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp)) // Forma rectangular redondeada más compacta
+            .clip(RoundedCornerShape(6.dp))
             .background(bgColor)
             .padding(horizontal = 8.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center

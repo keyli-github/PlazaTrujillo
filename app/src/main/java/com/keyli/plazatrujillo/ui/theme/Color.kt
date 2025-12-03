@@ -24,6 +24,7 @@ val StatusGreen = Color(0xFF4CAF50)     // Éxito
 val StatusRed = Color(0xFFF44336)       // Error
 val StatusBlue = Color(0xFF2196F3)      // Info
 val StatusPurple = Color(0xFF9C27B0)    // Lavandería
+val StatusGrey = Color(0xFF9E9E9E)      // Bloqueada/Mantenimiento
 
 // Paleta extra usada en dashboards
 val PiePurple = Color(0xFF673AB7)

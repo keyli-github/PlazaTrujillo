@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,95 +26,64 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.keyli.plazatrujillo.ui.theme.*
+import com.keyli.plazatrujillo.ui.viewmodel.ChatbotViewModel
+import com.keyli.plazatrujillo.ui.viewmodel.ChatMessage
+import com.keyli.plazatrujillo.ui.viewmodel.MessageType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-data class ChatMessage(
-    val id: String,
-    val text: String,
-    val isUser: Boolean,
-    val timestamp: Long = System.currentTimeMillis()
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatBotScreen(navController: NavHostController) {
+fun ChatBotScreen(
+    navController: NavHostController,
+    chatbotViewModel: ChatbotViewModel = viewModel()
+) {
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+    
+    val uiState by chatbotViewModel.uiState.collectAsState()
+    var input by remember { mutableStateOf("") }
 
     // --- COLORES DINÁMICOS ---
     val bgColor = MaterialTheme.colorScheme.background
     val surfaceColor = MaterialTheme.colorScheme.surface
     val textColor = MaterialTheme.colorScheme.onSurface
-    val borderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f) // Borde sutil adaptable
-
-    val messages = remember { mutableStateListOf<ChatMessage>() }
-    var isBotTyping by remember { mutableStateOf(false) }
-    var input by remember { mutableStateOf("") }
-
-    val suggestedQuestions = listOf(
-        "¿Cuáles son las ganancias del mes?",
-        "¿Cuál es la tasa de ocupación actual?",
-        "¿Cuántas reservas tenemos hoy?",
-        "Muéstrame los ingresos de esta semana",
-        "¿Qué habitaciones están disponibles?",
-        "Resumen de check-ins de hoy"
-    )
-
-    LaunchedEffect(Unit) {
-        if (messages.isEmpty()) {
-            isBotTyping = true
-            delay(800)
-            messages.add(
-                ChatMessage(
-                    id = "welcome",
-                    text = "¡Hola! Soy tu asistente virtual de Plaza Trujillo. 🏨✨\n\nPuedes preguntarme sobre finanzas, ocupación o estado del hotel. Selecciona una opción abajo o escribe tu consulta.",
-                    isUser = false
-                )
-            )
-            isBotTyping = false
+    val borderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+    
+    // Auto-scroll cuando hay nuevos mensajes
+    LaunchedEffect(uiState.messages.size) {
+        if (uiState.messages.isNotEmpty()) {
+            delay(100)
+            listState.animateScrollToItem(uiState.messages.lastIndex)
+        }
+    }
+    
+    // Mostrar error si existe
+    uiState.error?.let { error ->
+        LaunchedEffect(error) {
+            // El error se muestra como mensaje del bot, limpiar después de mostrar
+            delay(3000)
+            chatbotViewModel.clearError()
         }
     }
 
-    suspend fun processMessage(userText: String) {
-        messages.add(ChatMessage(id = System.nanoTime().toString(), text = userText, isUser = true))
-        input = ""
-        scope.launch {
-            delay(100)
-            listState.animateScrollToItem(messages.size)
-        }
-
-        isBotTyping = true
-        delay(1500)
-
-        val lowerText = userText.lowercase()
-        val replyText = when {
-            "ganancias" in lowerText && "mes" in lowerText -> "💰 **Ganancias de Diciembre:**\n\nHasta el momento, las ganancias netas son de **S/ 45,230.00**.\nEsto representa un aumento del 12% respecto al mes anterior."
-            "ocupación" in lowerText || "tasa" in lowerText -> "📈 **Tasa de Ocupación:**\n\nActualmente el hotel está al **78% de su capacidad**.\nHay 35 habitaciones ocupadas de 45 disponibles."
-            "reservas" in lowerText && "hoy" in lowerText -> "📅 **Reservas para Hoy:**\n\nTenemos **8 nuevas reservas** confirmadas para ingresar el día de hoy.\n3 de ellas son VIP (Suite)."
-            "ingresos" in lowerText && "semana" in lowerText -> "📊 **Ingresos de la Semana:**\n\n• Lunes: S/ 3,200\n• Martes: S/ 4,100\n• Miércoles: S/ 3,800\n\n**Total acumulado:** S/ 11,100."
-            "disponibles" in lowerText -> "🛏️ **Habitaciones Disponibles:**\n\nQuedan **10 habitaciones** libres ahora mismo:\n• 4 Simples\n• 4 Dobles\n• 2 Matrimoniales"
-            "check-in" in lowerText || "resumen" in lowerText -> "🛎️ **Resumen de Check-ins:**\n\n• Realizados: 5\n• Pendientes: 3\n• No-shows: 0\n\nEl próximo check-in está programado para las 14:30 hrs."
-            else -> "Entiendo tu consulta sobre '$userText', pero necesito consultar la base de datos central. ¿Podrías intentar con una de las opciones sugeridas?"
-        }
-
-        isBotTyping = false
-        messages.add(ChatMessage(id = System.nanoTime().toString(), text = replyText, isUser = false))
-        scope.launch {
-            delay(100)
-            listState.animateScrollToItem(messages.lastIndex)
+    fun sendMessage(text: String) {
+        if (text.isNotBlank()) {
+            chatbotViewModel.sendMessage(text)
+            input = ""
         }
     }
 
     Scaffold(
-        containerColor = bgColor, // CAMBIO 1: Fondo dinámico
+        containerColor = bgColor,
         bottomBar = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(bgColor) // CAMBIO 2: Fondo detrás de sugerencias
+                    .background(bgColor)
                     .imePadding()
             ) {
                 // SUGERENCIAS
@@ -121,17 +91,17 @@ fun ChatBotScreen(navController: NavHostController) {
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(suggestedQuestions) { question ->
+                    items(chatbotViewModel.suggestedQuestions) { question ->
                         Surface(
-                            onClick = { scope.launch { processMessage(question) } },
+                            onClick = { sendMessage(question) },
                             shape = RoundedCornerShape(16.dp),
-                            color = surfaceColor, // CAMBIO 3: Color de tarjeta de sugerencia
+                            color = surfaceColor,
                             border = BorderStroke(1.dp, OrangePrimary.copy(alpha = 0.5f))
                         ) {
                             Text(
                                 text = question,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                color = textColor, // CAMBIO 4: Texto visible en oscuro
+                                color = textColor,
                                 fontSize = 13.sp
                             )
                         }
@@ -140,7 +110,7 @@ fun ChatBotScreen(navController: NavHostController) {
 
                 // INPUT DE TEXTO
                 Surface(
-                    color = surfaceColor, // CAMBIO 5: Fondo del área de input
+                    color = surfaceColor,
                     shadowElevation = 12.dp,
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                 ) {
@@ -161,24 +131,31 @@ fun ChatBotScreen(navController: NavHostController) {
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = OrangePrimary,
                                 unfocusedBorderColor = textColor.copy(alpha = 0.3f),
-                                focusedContainerColor = bgColor, // CAMBIO 6: Fondo del input
+                                focusedContainerColor = bgColor,
                                 unfocusedContainerColor = bgColor,
-                                focusedTextColor = textColor, // IMPORTANTE: Texto que escribes
+                                focusedTextColor = textColor,
                                 unfocusedTextColor = textColor
                             ),
-                            singleLine = true
+                            singleLine = true,
+                            enabled = !uiState.isLoading
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         FloatingActionButton(
-                            onClick = {
-                                if (input.isNotBlank()) { scope.launch { processMessage(input) } }
-                            },
-                            containerColor = OrangePrimary,
+                            onClick = { sendMessage(input) },
+                            containerColor = if (uiState.isLoading) OrangePrimary.copy(alpha = 0.5f) else OrangePrimary,
                             contentColor = Color.White,
                             shape = CircleShape,
                             modifier = Modifier.size(50.dp)
                         ) {
-                            Icon(Icons.Default.Send, contentDescription = "Enviar")
+                            if (uiState.isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(Icons.Default.Send, contentDescription = "Enviar")
+                            }
                         }
                     }
                 }
@@ -189,36 +166,54 @@ fun ChatBotScreen(navController: NavHostController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = innerPadding.calculateBottomPadding())
+                .padding(
+                    top = innerPadding.calculateTopPadding(),
+                    bottom = innerPadding.calculateBottomPadding()
+                )
         ) {
             // HEADER DEL ASISTENTE
             Surface(
-                color = surfaceColor, // CAMBIO 7: Header dinámico
+                color = surfaceColor,
                 shadowElevation = 2.dp,
                 modifier = Modifier.fillMaxWidth(),
-                border = BorderStroke(1.dp, borderColor) // CAMBIO 8: Borde sutil
+                border = BorderStroke(1.dp, borderColor)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(OrangePrimary),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(OrangePrimary),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White)
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text("Asistente IA", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = textColor)
+                            Text(
+                                text = if (uiState.isTyping) "Escribiendo..." else "En línea",
+                                color = if (uiState.isTyping) OrangePrimary else StatusGreen,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text("Asistente IA", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = textColor)
-                        Text(
-                            text = if (isBotTyping) "Escribiendo..." else "En línea",
-                            color = if (isBotTyping) OrangePrimary else StatusGreen,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
+                    // Botón para nueva sesión
+                    IconButton(
+                        onClick = { chatbotViewModel.endSession() }
+                    ) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = "Nueva conversación",
+                            tint = textColor.copy(alpha = 0.7f)
                         )
                     }
                 }
@@ -228,15 +223,16 @@ fun ChatBotScreen(navController: NavHostController) {
             LazyColumn(
                 state = listState,
                 modifier = Modifier
-                    .fillMaxSize()
+                    .weight(1f)
+                    .fillMaxWidth()
                     .padding(horizontal = 16.dp),
                 contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                itemsIndexed(messages) { _, msg ->
+                itemsIndexed(uiState.messages) { _, msg ->
                     ChatBubble(message = msg)
                 }
-                if (isBotTyping) {
+                if (uiState.isTyping) {
                     item { TypingIndicator() }
                 }
             }
@@ -247,10 +243,8 @@ fun ChatBotScreen(navController: NavHostController) {
 // --- COMPONENTES VISUALES ---
 @Composable
 fun ChatBubble(message: ChatMessage) {
-    val isUser = message.isUser
+    val isUser = message.type == MessageType.USER
 
-    // CAMBIO 9: Lógica de colores para burbujas
-    // Si es Bot: Usamos 'surfaceVariant' (un gris ligeramente distinto al fondo) para que resalte en modo oscuro
     val bubbleColor = if (isUser) OrangePrimary else MaterialTheme.colorScheme.surfaceVariant
     val textColor = if (isUser) Color.White else MaterialTheme.colorScheme.onSurface
 
@@ -266,8 +260,7 @@ fun ChatBubble(message: ChatMessage) {
             Surface(
                 color = bubbleColor,
                 shape = shape,
-                shadowElevation = 1.dp, // Bajamos la elevación en dark mode se ve mejor sutil
-                // En dark mode no necesitamos borde gris feo, el surfaceVariant ya hace contraste
+                shadowElevation = 1.dp,
                 border = null
             ) {
                 Text(text = message.text, color = textColor, modifier = Modifier.padding(14.dp), fontSize = 15.sp, lineHeight = 22.sp)
@@ -287,7 +280,6 @@ fun TypingIndicator() {
     val alpha2 by transition.animateFloat(0.3f, 1f, infiniteRepeatable(tween(600, 200), RepeatMode.Reverse), "dot2")
     val alpha3 by transition.animateFloat(0.3f, 1f, infiniteRepeatable(tween(600, 400), RepeatMode.Reverse), "dot3")
 
-    // CAMBIO 10: Colores del indicador de "Escribiendo..."
     val bubbleColor = MaterialTheme.colorScheme.surfaceVariant
     val dotColor = MaterialTheme.colorScheme.onSurface
 

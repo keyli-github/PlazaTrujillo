@@ -35,36 +35,52 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.keyli.plazatrujillo.ui.theme.*
+import com.keyli.plazatrujillo.ui.viewmodel.ReservationViewModel
+import com.keyli.plazatrujillo.data.model.CreateReservationRequest
+import com.keyli.plazatrujillo.data.model.CompanionItem
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 // Estados del proceso de guardado
 enum class SaveState {
     IDLE,       // Esperando input
     LOADING,    // Círculo cargando
-    SUCCESS     // Check naranja y mensaje
+    SUCCESS,    // Check naranja y mensaje
+    ERROR       // Error al crear
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NewReservationScreen(navController: NavHostController) {
+fun NewReservationScreen(
+    navController: NavHostController,
+    viewModel: ReservationViewModel = viewModel()
+) {
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
+    val uiState by viewModel.uiState.collectAsState()
 
     // Controlamos el estado de la animación aquí
     var saveState by remember { mutableStateOf(SaveState.IDLE) }
+    var errorMessage by remember { mutableStateOf("") }
 
     // --- DATOS MAESTROS ---
     val docTypes = listOf("DNI", "RUC", "CE")
     val channelTypes = listOf("Booking.com", "WhatsApp", "Venta Directa")
     val roomTypes = listOf("Simple", "Doble", "Triple", "Matrimonial")
 
-    val roomList = listOf(
-        "111 - Piso 1", "112 - Piso 1", "113 - Piso 1",
-        "210 - Piso 2", "211 - Piso 2", "212 - Piso 2", "213 - Piso 2", "214 - Piso 2", "215 - Piso 2",
-        "310 - Piso 3", "311 - Piso 3", "312 - Piso 3", "313 - Piso 3", "314 - Piso 3", "315 - Piso 3"
-    )
+    // Cargar habitaciones disponibles cuando cambien las fechas
+    val availableRooms = uiState.availableRooms
+    val roomList = remember(availableRooms) {
+        availableRooms.map { room ->
+            "${room.code} - Piso ${room.floor}"
+        }
+    }
 
     // --- ESTADOS FORMULARIO ---
     var selectedDocType by remember { mutableStateOf(docTypes[0]) }
@@ -80,8 +96,81 @@ fun NewReservationScreen(navController: NavHostController) {
     // Fechas (dd/mm/aaaa)
     var checkIn by remember { mutableStateOf("") }
     var checkOut by remember { mutableStateOf("") }
+    
+    // Estados para los DatePickers
+    var showCheckInDatePicker by remember { mutableStateOf(false) }
+    var showCheckOutDatePicker by remember { mutableStateOf(false) }
+    
+    // Estados de los DatePickers
+    val checkInDatePickerState = rememberDatePickerState()
+    val checkOutDatePickerState = rememberDatePickerState()
+    
+    // Actualizar checkIn cuando se selecciona una fecha
+    LaunchedEffect(checkInDatePickerState.selectedDateMillis) {
+        checkInDatePickerState.selectedDateMillis?.let { millis ->
+            val displayFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+            checkIn = displayFormatter.format(Date(millis))
+        }
+    }
+    
+    // Actualizar checkOut cuando se selecciona una fecha
+    LaunchedEffect(checkOutDatePickerState.selectedDateMillis) {
+        checkOutDatePickerState.selectedDateMillis?.let { millis ->
+            val displayFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+            checkOut = displayFormatter.format(Date(millis))
+        }
+    }
 
     val areDatesSelected = checkIn.length >= 10 && checkOut.length >= 10
+    
+    // Flag para diferenciar entre búsqueda de titular y acompañante
+    var isLookingUpCompanion by remember { mutableStateOf(false) }
+    
+    // Cargar habitaciones disponibles cuando las fechas cambien
+    LaunchedEffect(checkIn, checkOut) {
+        if (areDatesSelected) {
+            // Convertir de dd/mm/yyyy a yyyy-mm-dd para la API
+            val checkInApi = convertDateToApiFormat(checkIn)
+            val checkOutApi = convertDateToApiFormat(checkOut)
+            if (checkInApi != null && checkOutApi != null) {
+                viewModel.loadAvailableRooms(checkInApi, checkOutApi)
+            }
+        }
+    }
+    
+    // Auto-llenar datos cuando se obtiene resultado de búsqueda de documento del titular
+    LaunchedEffect(uiState.lookupResult, isLookingUpCompanion) {
+        if (!isLookingUpCompanion && uiState.lookupResult != null) {
+            uiState.lookupResult?.let { result ->
+                // Llenar el nombre
+                result.name?.let { guestName = it }
+                
+                // Extraer datos adicionales del raw.data
+                result.raw?.data?.let { data ->
+                    // Dirección
+                    val direccionCompleta = data["direccion_completa"] as? String
+                    val direccion = data["direccion"] as? String
+                    address = direccionCompleta ?: direccion ?: ""
+                    
+                    // Ubicación
+                    dep = data["departamento"] as? String ?: ""
+                    prov = data["provincia"] as? String ?: ""
+                    dist = data["distrito"] as? String ?: ""
+                }
+                
+                // Limpiar el resultado después de procesarlo
+                viewModel.clearLookupResult()
+            }
+        }
+    }
+    
+    // Mostrar error de búsqueda si existe
+    LaunchedEffect(uiState.lookupError) {
+        uiState.lookupError?.let { error ->
+            errorMessage = error
+            viewModel.clearLookupResult()
+        }
+    }
 
     var selectedRoomNumber by remember { mutableStateOf("") }
     var selectedRoomType by remember { mutableStateOf(roomTypes[0]) }
@@ -105,6 +194,33 @@ fun NewReservationScreen(navController: NavHostController) {
     var compDep by remember { mutableStateOf("") }
     var compProv by remember { mutableStateOf("") }
     var compDist by remember { mutableStateOf("") }
+    
+    // Auto-llenar datos del acompañante cuando se obtiene resultado de búsqueda
+    LaunchedEffect(uiState.lookupResult, isLookingUpCompanion) {
+        if (isLookingUpCompanion && uiState.lookupResult != null) {
+            uiState.lookupResult?.let { result ->
+                // Llenar el nombre del acompañante
+                result.name?.let { compName = it }
+                
+                // Extraer datos adicionales del raw.data
+                result.raw?.data?.let { data ->
+                    // Dirección
+                    val direccionCompleta = data["direccion_completa"] as? String
+                    val direccion = data["direccion"] as? String
+                    compAddress = direccionCompleta ?: direccion ?: ""
+                    
+                    // Ubicación
+                    compDep = data["departamento"] as? String ?: ""
+                    compProv = data["provincia"] as? String ?: ""
+                    compDist = data["distrito"] as? String ?: ""
+                }
+                
+                // Limpiar el resultado y el flag
+                viewModel.clearLookupResult()
+                isLookingUpCompanion = false
+            }
+        }
+    }
 
 
     // --- UI PRINCIPAL (Usamos un Box para poder superponer la animación) ---
@@ -143,19 +259,35 @@ fun NewReservationScreen(navController: NavHostController) {
             SectionCard {
                 Column(modifier = Modifier.padding(20.dp)) {
                     SectionTitle("Datos del Titular")
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Column(modifier = Modifier.weight(0.35f)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
+                        Column(modifier = Modifier.weight(0.30f)) {
                             ReservationFormLabel("Tipo")
                             ReservationCustomDropdown(options = docTypes, selected = selectedDocType, onSelected = { selectedDocType = it })
                         }
-                        Column(modifier = Modifier.weight(0.65f)) {
+                        Column(modifier = Modifier.weight(0.50f)) {
                             ReservationFormLabel("Número")
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                ReservationCustomTextField(value = docNumber, onValueChange = { docNumber = it }, modifier = Modifier.weight(1f), isNumber = true, placeholder = "Documento")
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Box(modifier = Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)).background(OrangePrimary).clickable { }, contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.Search, contentDescription = "Buscar", tint = Color.White)
-                                }
+                            ReservationCustomTextField(value = docNumber, onValueChange = { docNumber = it }, isNumber = true, placeholder = "Documento")
+                        }
+                        // Botón de búsqueda
+                        Box(
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(if (uiState.isLookingUpDocument && !isLookingUpCompanion) Color.Gray else OrangePrimary)
+                                .clickable(enabled = !uiState.isLookingUpDocument && docNumber.isNotEmpty()) {
+                                    isLookingUpCompanion = false
+                                    viewModel.lookupDocument(selectedDocType, docNumber)
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (uiState.isLookingUpDocument && !isLookingUpCompanion) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(Icons.Default.Search, contentDescription = "Buscar", tint = Color.White)
                             }
                         }
                     }
@@ -186,11 +318,37 @@ fun NewReservationScreen(navController: NavHostController) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Column(modifier = Modifier.weight(1f)) {
                             ReservationFormLabel("Check-in *")
-                            ReservationCustomTextField(value = checkIn, onValueChange = { checkIn = formatDateInput(it) }, icon = Icons.Outlined.CalendarToday, placeholder = "dd/mm/aaaa", isNumber = true)
+                            Box {
+                                ReservationCustomTextField(
+                                    value = checkIn, 
+                                    onValueChange = { }, 
+                                    icon = Icons.Outlined.CalendarToday, 
+                                    placeholder = "Seleccionar fecha",
+                                    readOnly = true
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .clickable { showCheckInDatePicker = true }
+                                )
+                            }
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             ReservationFormLabel("Check-out *")
-                            ReservationCustomTextField(value = checkOut, onValueChange = { checkOut = formatDateInput(it) }, icon = Icons.Outlined.CalendarToday, placeholder = "dd/mm/aaaa", isNumber = true)
+                            Box {
+                                ReservationCustomTextField(
+                                    value = checkOut, 
+                                    onValueChange = { }, 
+                                    icon = Icons.Outlined.CalendarToday, 
+                                    placeholder = "Seleccionar fecha",
+                                    readOnly = true
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .clickable { showCheckOutDatePicker = true }
+                                )
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(20.dp))
@@ -261,9 +419,38 @@ fun NewReservationScreen(navController: NavHostController) {
                     }
                     if (showCompanions) {
                         Spacer(modifier = Modifier.height(16.dp))
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Box(Modifier.weight(0.35f)) { ReservationCustomDropdown(options = docTypes, selected = compDocType, onSelected = { compDocType = it }) }
-                            Box(Modifier.weight(0.65f)) { ReservationCustomTextField(value = compDocNum, onValueChange = { compDocNum = it }, placeholder = "Número", isNumber = true) }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.weight(0.30f)) { ReservationCustomDropdown(options = docTypes, selected = compDocType, onSelected = { compDocType = it }) }
+                            Box(Modifier.weight(0.50f)) {
+                                ReservationCustomTextField(
+                                    value = compDocNum,
+                                    onValueChange = { compDocNum = it },
+                                    placeholder = "Número",
+                                    isNumber = true
+                                )
+                            }
+                            // Botón de búsqueda acompañante
+                            Box(
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(if (uiState.isLookingUpDocument && isLookingUpCompanion) Color.Gray else OrangePrimary)
+                                    .clickable(enabled = !uiState.isLookingUpDocument && compDocNum.isNotEmpty()) {
+                                        isLookingUpCompanion = true
+                                        viewModel.lookupDocument(compDocType, compDocNum)
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (uiState.isLookingUpDocument && isLookingUpCompanion) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        color = Color.White,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Icon(Icons.Default.Search, contentDescription = "Buscar", tint = Color.White)
+                                }
+                            }
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                         ReservationCustomTextField(value = compName, onValueChange = { compName = it }, placeholder = "Nombre completo")
@@ -306,19 +493,78 @@ fun NewReservationScreen(navController: NavHostController) {
 
                 Button(
                     onClick = {
-                        // LOGICA DEL BOTON
+                        // LOGICA DEL BOTON - CREAR RESERVA EN LA API
                         if (saveState == SaveState.IDLE) {
                             scope.launch {
                                 // 1. Mostrar carga
                                 saveState = SaveState.LOADING
-                                delay(2000) // Simular guardado en BD
+                                
+                                // Extraer solo el número de habitación (ej: "111" de "111 - Piso 1")
+                                val roomCode = selectedRoomNumber.split(" - ").firstOrNull() ?: selectedRoomNumber
+                                
+                                // Convertir fechas a formato API (yyyy-mm-dd)
+                                val checkInApi = convertDateToApiFormat(checkIn) ?: ""
+                                val checkOutApi = convertDateToApiFormat(checkOut) ?: ""
+                                
+                                // Crear el request
+                                val request = CreateReservationRequest(
+                                    channel = selectedChannel,
+                                    guest = guestName,
+                                    room = roomCode,
+                                    rooms = listOf(roomCode),
+                                    checkIn = checkInApi,
+                                    checkOut = checkOutApi,
+                                    total = totalMoney.toDoubleOrNull(),
+                                    status = "Confirmada",
+                                    paid = isPaid,
+                                    documentType = selectedDocType,
+                                    documentNumber = docNumber,
+                                    arrivalTime = timeArrival.ifBlank { null },
+                                    departureTime = timeDeparture.ifBlank { null },
+                                    numPeople = totalPeople,
+                                    numAdults = adults.toIntOrNull() ?: 1,
+                                    numChildren = kids.toIntOrNull() ?: 0,
+                                    numRooms = 1,
+                                    address = address.ifBlank { null },
+                                    department = dep.ifBlank { null },
+                                    province = prov.ifBlank { null },
+                                    district = dist.ifBlank { null },
+                                    roomType = selectedRoomType,
+                                    companions = if (showCompanions && compName.isNotBlank()) {
+                                        listOf(
+                                            CompanionItem(
+                                                name = compName,
+                                                documentType = compDocType,
+                                                documentNumber = compDocNum,
+                                                address = compAddress.ifBlank { null },
+                                                department = compDep.ifBlank { null },
+                                                province = compProv.ifBlank { null },
+                                                district = compDist.ifBlank { null }
+                                            )
+                                        )
+                                    } else null
+                                )
+                                
+                                // Llamar a la API
+                                viewModel.createReservation(request)
+                                
+                                // Esperar un poco y verificar el estado
+                                delay(500)
+                                
+                                if (uiState.error != null) {
+                                    errorMessage = uiState.error ?: "Error al crear reserva"
+                                    saveState = SaveState.ERROR
+                                    delay(2000)
+                                    saveState = SaveState.IDLE
+                                    viewModel.clearError()
+                                } else {
+                                    // 2. Mostrar éxito
+                                    saveState = SaveState.SUCCESS
+                                    delay(1500) // Dejar que se vea la animación bonita
 
-                                // 2. Mostrar éxito
-                                saveState = SaveState.SUCCESS
-                                delay(1500) // Dejar que se vea la animación bonita
-
-                                // 3. Salir
-                                navController.popBackStack()
+                                    // 3. Salir
+                                    navController.popBackStack()
+                                }
                             }
                         }
                     },
@@ -334,7 +580,81 @@ fun NewReservationScreen(navController: NavHostController) {
         }
 
         // 2. OVERLAY DE ANIMACION (SE PONE ENCIMA DEL FORMULARIO)
-        SuccessOverlay(state = saveState)
+        SuccessOverlay(state = saveState, errorMessage = errorMessage)
+    }
+    
+    // ==========================================
+    // DIALOGO DATE PICKER - CHECK-IN
+    // ==========================================
+    if (showCheckInDatePicker) {
+        val isDark = isAppDarkTheme()
+        val surfaceColor = if (isDark) Color(0xFF1E1E1E) else Color.White
+        val textColor = if (isDark) Color.White else Color.Black
+        val textSecondary = if (isDark) Color.Gray else Color.DarkGray
+        
+        DatePickerDialog(
+            onDismissRequest = { showCheckInDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = { showCheckInDatePicker = false }) {
+                    Text("Aceptar", color = OrangePrimary)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCheckInDatePicker = false }) {
+                    Text("Cancelar", color = textSecondary)
+                }
+            },
+            colors = DatePickerDefaults.colors(
+                containerColor = surfaceColor,
+                titleContentColor = textColor,
+                headlineContentColor = textColor,
+                weekdayContentColor = textSecondary,
+                dayContentColor = textColor,
+                todayContentColor = OrangePrimary,
+                todayDateBorderColor = OrangePrimary,
+                selectedDayContainerColor = OrangePrimary,
+                selectedDayContentColor = Color.White
+            )
+        ) {
+            DatePicker(state = checkInDatePickerState)
+        }
+    }
+    
+    // ==========================================
+    // DIALOGO DATE PICKER - CHECK-OUT
+    // ==========================================
+    if (showCheckOutDatePicker) {
+        val isDark = isAppDarkTheme()
+        val surfaceColor = if (isDark) Color(0xFF1E1E1E) else Color.White
+        val textColor = if (isDark) Color.White else Color.Black
+        val textSecondary = if (isDark) Color.Gray else Color.DarkGray
+        
+        DatePickerDialog(
+            onDismissRequest = { showCheckOutDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = { showCheckOutDatePicker = false }) {
+                    Text("Aceptar", color = OrangePrimary)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCheckOutDatePicker = false }) {
+                    Text("Cancelar", color = textSecondary)
+                }
+            },
+            colors = DatePickerDefaults.colors(
+                containerColor = surfaceColor,
+                titleContentColor = textColor,
+                headlineContentColor = textColor,
+                weekdayContentColor = textSecondary,
+                dayContentColor = textColor,
+                todayContentColor = OrangePrimary,
+                todayDateBorderColor = OrangePrimary,
+                selectedDayContainerColor = OrangePrimary,
+                selectedDayContentColor = Color.White
+            )
+        ) {
+            DatePicker(state = checkOutDatePickerState)
+        }
     }
 }
 
@@ -342,7 +662,7 @@ fun NewReservationScreen(navController: NavHostController) {
 // COMPONENTE VISUAL DE EXITO (ANIMACION)
 // ==========================================
 @Composable
-fun SuccessOverlay(state: SaveState) {
+fun SuccessOverlay(state: SaveState, errorMessage: String = "") {
     AnimatedVisibility(
         visible = state != SaveState.IDLE,
         enter = fadeIn(),
@@ -359,7 +679,7 @@ fun SuccessOverlay(state: SaveState) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // ANIMACION DE TRANSICION: LOADING -> CHECK
+                // ANIMACION DE TRANSICION: LOADING -> CHECK/ERROR
                 Box(contentAlignment = Alignment.Center) {
 
                     // 1. LOADING (Solo visible si state == LOADING)
@@ -395,6 +715,28 @@ fun SuccessOverlay(state: SaveState) {
                             )
                         }
                     }
+                    
+                    // 3. ERROR (Solo visible si state == ERROR)
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = state == SaveState.ERROR,
+                        enter = scaleIn(animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)) + fadeIn()
+                    ) {
+                        // Circulo Rojo + Icono X
+                        Box(
+                            modifier = Modifier
+                                .size(100.dp)
+                                .clip(CircleShape)
+                                .background(StatusRed),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Error",
+                                tint = Color.White,
+                                modifier = Modifier.size(50.dp)
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -410,6 +752,29 @@ fun SuccessOverlay(state: SaveState) {
                         style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onBackground
                     )
+                }
+                
+                // TEXTO ERROR
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = state == SaveState.ERROR,
+                    enter = fadeIn(animationSpec = tween(500, delayMillis = 200)) +
+                            scaleIn(initialScale = 0.8f)
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Error",
+                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                            color = StatusRed
+                        )
+                        if (errorMessage.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = errorMessage,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -428,6 +793,17 @@ fun formatDateInput(input: String): String {
         trimmed.length >= 3 -> "${trimmed.substring(0, 2)}/${trimmed.substring(2)}"
         else -> trimmed
     }
+}
+
+// Convertir fecha de dd/mm/yyyy a yyyy-mm-dd para la API
+fun convertDateToApiFormat(date: String): String? {
+    if (date.length < 10) return null
+    val parts = date.split("/")
+    if (parts.size != 3) return null
+    val day = parts[0]
+    val month = parts[1]
+    val year = parts[2]
+    return "$year-$month-$day"
 }
 
 @Composable
