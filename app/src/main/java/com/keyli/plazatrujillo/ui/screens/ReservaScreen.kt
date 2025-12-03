@@ -1086,9 +1086,12 @@ fun DynamicCalendarSection(
 ) {
     val currentCalendar = remember { Calendar.getInstance() }
     val isDark = isReservaDarkTheme()
+
+    // Estados del calendario
     var displayMonth by remember { mutableIntStateOf(currentCalendar.get(Calendar.MONTH)) }
     var displayYear by remember { mutableIntStateOf(currentCalendar.get(Calendar.YEAR)) }
-    var isMonthView by remember { mutableStateOf(true) }
+    var isMonthView by remember { mutableStateOf(true) } // Estado del Toggle (Mes vs Agenda)
+
     var showNoteDialog by remember { mutableStateOf(false) }
     var selectedDateString by remember { mutableStateOf("") }
     var noteText by remember { mutableStateOf("") }
@@ -1099,6 +1102,7 @@ fun DynamicCalendarSection(
         onLoadNotes()
     }
 
+    // Funciones de navegación
     fun updateDate(monthOffset: Int) {
         val cal = Calendar.getInstance()
         cal.set(Calendar.YEAR, displayYear)
@@ -1116,13 +1120,14 @@ fun DynamicCalendarSection(
         displayYear = cal.get(Calendar.YEAR)
     }
 
-    // Actualizar el texto de la nota cuando se selecciona una fecha
+    // Actualizar nota al seleccionar fecha
     LaunchedEffect(selectedDateString, showNoteDialog) {
         if (showNoteDialog) {
             noteText = calendarNotes[selectedDateString] ?: ""
         }
     }
 
+    // Dialogo de notas
     if (showNoteDialog) {
         NoteDialog(
             date = selectedDateString,
@@ -1140,6 +1145,7 @@ fun DynamicCalendarSection(
         )
     }
 
+    // --- UI DEL CALENDARIO ---
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -1147,38 +1153,136 @@ fun DynamicCalendarSection(
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
+
+            // 1. Títulos
             Text(
-                "Calendario de Reservas",
+                text = "Calendario de Reservas",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
+            Text(
+                text = "Visualiza todas las reservas por canal de reserva",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+
             Spacer(modifier = Modifier.height(20.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+
+            // 2. Fila de Botones: Hoy | Anterior | Siguiente (CENTRADOS)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                // Esto junta los botones y centra todo el grupo en la pantalla
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Botón Hoy
+                OutlinedButton(
+                    onClick = { setToday() },
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Text("Hoy", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f), fontSize = 13.sp)
+                }
+
+                // Botón Anterior
                 OutlinedButton(
                     onClick = { updateDate(-1) },
-                    shape = RoundedCornerShape(4.dp)
-                ) { Text("Anterior") }
-                Spacer(modifier = Modifier.width(8.dp))
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Text("Anterior", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
+                }
+
+                // Botón Siguiente
                 OutlinedButton(
                     onClick = { updateDate(1) },
-                    shape = RoundedCornerShape(4.dp)
-                ) { Text("Siguiente") }
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Text("Siguiente", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
+                }
             }
+
             Spacer(modifier = Modifier.height(16.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                val cal = Calendar.getInstance()
-                cal.set(Calendar.MONTH, displayMonth)
-                val monthName =
-                    cal.getDisplayName(Calendar.MONTH, Calendar.LONG, Locale("es", "ES")) ?: ""
+
+            // 3. Título del Mes (Centrado)
+            val cal = Calendar.getInstance()
+            cal.set(Calendar.MONTH, displayMonth)
+            cal.set(Calendar.YEAR, displayYear)
+            val monthName = cal.getDisplayName(Calendar.MONTH, Calendar.LONG, Locale("es", "ES")) ?: ""
+
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Text(
-                    "$monthName $displayYear",
+                    text = "$monthName de $displayYear".replaceFirstChar { it.uppercase() },
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 4. Toggle Mes / Agenda (Estilo Segmented Control)
+            val borderColor = MaterialTheme.colorScheme.outlineVariant
+            val activeBg = if(isDark) Color(0xFF424242) else Color(0xFFE0E0E0) // Gris claro cuando está activo
+            val inactiveBg = Color.Transparent
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                Row(
+                    modifier = Modifier
+                        .height(32.dp)
+                        .border(1.dp, borderColor, RoundedCornerShape(6.dp))
+                        .clip(RoundedCornerShape(6.dp))
+                ) {
+                    // Botón Mes
+                    Box(
+                        modifier = Modifier
+                            .background(if (isMonthView) activeBg else inactiveBg)
+                            .clickable { isMonthView = true }
+                            .padding(horizontal = 24.dp)
+                            .fillMaxHeight(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "Mes",
+                            fontSize = 13.sp,
+                            fontWeight = if(isMonthView) FontWeight.Bold else FontWeight.Normal,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    // Divisor vertical
+                    VerticalDivider(modifier = Modifier.fillMaxHeight().width(1.dp), color = borderColor)
+
+                    // Botón Agenda
+                    Box(
+                        modifier = Modifier
+                            .background(if (!isMonthView) activeBg else inactiveBg)
+                            .clickable { isMonthView = false }
+                            .padding(horizontal = 24.dp)
+                            .fillMaxHeight(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "Agenda",
+                            fontSize = 13.sp,
+                            fontWeight = if(!isMonthView) FontWeight.Bold else FontWeight.Normal,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(20.dp))
+
+            // 5. Contenido del Calendario (Grid o Agenda)
             if (isMonthView) {
                 CalendarGridLegacy(
                     month = displayMonth,
@@ -1191,33 +1295,30 @@ fun DynamicCalendarSection(
                     }
                 )
             } else {
-                // Vista Agenda - mostrar eventos que tienen algún día en el mes actual
+                // Vista Agenda (Lógica original)
                 val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
                 val currentMonthEvents = calendarEvents.filter { event ->
                     try {
                         val startStr = event.start?.substring(0, 10) ?: return@filter false
                         val endStr = event.end?.substring(0, 10) ?: startStr
-                        
                         val eventStart = dateFormat.parse(startStr) ?: return@filter false
                         val eventEnd = dateFormat.parse(endStr) ?: eventStart
-                        
-                        // Crear fechas del primer y último día del mes actual
-                        val cal = Calendar.getInstance()
-                        cal.set(Calendar.YEAR, displayYear)
-                        cal.set(Calendar.MONTH, displayMonth)
-                        cal.set(Calendar.DAY_OF_MONTH, 1)
-                        val monthStart = cal.time
-                        
-                        cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH))
-                        val monthEnd = cal.time
-                        
-                        // El evento está en el mes si hay alguna intersección
+
+                        val calendarCalc = Calendar.getInstance()
+                        calendarCalc.set(Calendar.YEAR, displayYear)
+                        calendarCalc.set(Calendar.MONTH, displayMonth)
+                        calendarCalc.set(Calendar.DAY_OF_MONTH, 1)
+                        val monthStart = calendarCalc.time
+
+                        calendarCalc.set(Calendar.DAY_OF_MONTH, calendarCalc.getActualMaximum(Calendar.DAY_OF_MONTH))
+                        val monthEnd = calendarCalc.time
+
                         !eventEnd.before(monthStart) && !eventStart.after(monthEnd)
                     } catch (e: Exception) {
                         false
                     }
                 }
-                
+
                 if (currentMonthEvents.isEmpty()) {
                     Box(
                         modifier = Modifier
