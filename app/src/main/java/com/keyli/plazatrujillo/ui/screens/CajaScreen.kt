@@ -151,7 +151,7 @@ fun CajaScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                //.padding(paddingValues)
                 .padding(16.dp)
                 .verticalScroll(scrollState)
         ) {

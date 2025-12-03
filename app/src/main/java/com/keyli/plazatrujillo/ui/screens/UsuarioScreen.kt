@@ -188,7 +188,7 @@ fun UsuarioScreen(navController: NavHostController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                //.padding(paddingValues)
                 .verticalScroll(scrollState)
                 .padding(20.dp)
         ) {

@@ -113,7 +113,7 @@ fun DashboardScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(backgroundColor)
-                        .padding(paddingValues)
+                        .padding()
                         .padding(16.dp)
                         .verticalScroll(scrollState)
                 ) {

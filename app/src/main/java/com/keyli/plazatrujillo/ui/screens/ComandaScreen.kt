@@ -156,7 +156,7 @@ fun ComandaScreen(navController: NavHostController) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
+                    //.padding(paddingValues)
                     .verticalScroll(scrollState)
                     .padding(horizontal = 20.dp, vertical = 10.dp)
             ) {

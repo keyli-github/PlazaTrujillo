@@ -76,7 +76,7 @@ fun LavanderiaScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                //.padding(paddingValues)
         ) {
             if (uiState.isLoading && uiState.stock.isEmpty()) {
                 // Loading inicial
