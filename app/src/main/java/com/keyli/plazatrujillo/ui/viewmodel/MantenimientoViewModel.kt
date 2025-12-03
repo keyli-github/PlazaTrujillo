@@ -9,12 +9,24 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+// Estado del Sistema de Agua Caliente
+data class WaterHeatingSystemState(
+    val operationalStatus: String = "Operativo",
+    val briquettesThisMonth: Int = 0,
+    val lastMaintenanceDate: String? = null,
+    val lastMaintenanceTime: String? = null,
+    val nextMaintenanceDate: String? = null,
+    val nextMaintenanceTime: String? = null
+)
+
 data class MantenimientoUiState(
-    val systemStatus: SystemStatus? = null,
+    val waterHeatingSystem: WaterHeatingSystemState = WaterHeatingSystemState(),
     val briquetteHistory: List<BriquetteRecord> = emptyList(),
     val issues: List<MaintenanceIssue> = emptyList(),
     val blockedRooms: List<BlockedRoom> = emptyList(),
+    val allRooms: List<Room> = emptyList(),
     val isLoading: Boolean = false,
+    val isSaving: Boolean = false,
     val error: String? = null,
     val successMessage: String? = null
 )
@@ -26,15 +38,26 @@ class MantenimientoViewModel(
     private val _uiState = MutableStateFlow(MantenimientoUiState())
     val uiState: StateFlow<MantenimientoUiState> = _uiState.asStateFlow()
     
+    init {
+        refresh()
+    }
+    
     fun loadSystemStatus() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             val result = repository.getSystemStatus()
             
             result.fold(
-                onSuccess = { status ->
+                onSuccess = { response ->
                     _uiState.value = _uiState.value.copy(
-                        systemStatus = status,
+                        waterHeatingSystem = WaterHeatingSystemState(
+                            operationalStatus = response.operationalStatus ?: "Operativo",
+                            briquettesThisMonth = response.briquettesThisMonth ?: 0,
+                            lastMaintenanceDate = response.lastMaintenance?.date,
+                            lastMaintenanceTime = response.lastMaintenance?.time,
+                            nextMaintenanceDate = response.nextMaintenance?.date,
+                            nextMaintenanceTime = response.nextMaintenance?.time
+                        ),
                         isLoading = false
                     )
                 },
@@ -42,29 +65,6 @@ class MantenimientoViewModel(
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         error = exception.message ?: "Error al cargar estado del sistema"
-                    )
-                }
-            )
-        }
-    }
-    
-    fun updateSystemStatus(request: UpdateSystemStatusRequest) {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null, successMessage = null)
-            val result = repository.updateSystemStatus(request)
-            
-            result.fold(
-                onSuccess = { status ->
-                    _uiState.value = _uiState.value.copy(
-                        systemStatus = status,
-                        isLoading = false,
-                        successMessage = "Estado del sistema actualizado exitosamente"
-                    )
-                },
-                onFailure = { exception ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = exception.message ?: "Error al actualizar estado del sistema"
                     )
                 }
             )
@@ -87,22 +87,35 @@ class MantenimientoViewModel(
         }
     }
     
-    fun registerBriquetteChange(request: RegisterBriquetteChangeRequest) {
+    fun registerBriquetteChange(
+        quantity: Int,
+        date: String,
+        time: String,
+        operationalStatus: String
+    ) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null, successMessage = null)
+            _uiState.value = _uiState.value.copy(isSaving = true, error = null, successMessage = null)
+            
+            val request = RegisterBriquetteChangeRequest(
+                quantity = quantity,
+                date = date,
+                time = time,
+                operationalStatus = operationalStatus
+            )
+            
             val result = repository.registerBriquetteChange(request)
             
             result.fold(
-                onSuccess = { record ->
+                onSuccess = {
                     _uiState.value = _uiState.value.copy(
-                        briquetteHistory = _uiState.value.briquetteHistory + record,
-                        isLoading = false,
+                        isSaving = false,
                         successMessage = "Cambio de briquetas registrado exitosamente"
                     )
+                    refresh()
                 },
                 onFailure = { exception ->
                     _uiState.value = _uiState.value.copy(
-                        isLoading = false,
+                        isSaving = false,
                         error = exception.message ?: "Error al registrar cambio de briquetas"
                     )
                 }
@@ -126,22 +139,35 @@ class MantenimientoViewModel(
         }
     }
     
-    fun reportIssue(request: ReportIssueRequest) {
+    fun reportIssue(
+        room: String,
+        problem: String,
+        priority: String,
+        technician: String?
+    ) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null, successMessage = null)
+            _uiState.value = _uiState.value.copy(isSaving = true, error = null, successMessage = null)
+            
+            val request = ReportIssueRequest(
+                room = room,
+                problem = problem,
+                priority = priority,
+                technician = technician
+            )
+            
             val result = repository.reportIssue(request)
             
             result.fold(
-                onSuccess = { issue ->
+                onSuccess = {
                     _uiState.value = _uiState.value.copy(
-                        issues = _uiState.value.issues + issue,
-                        isLoading = false,
+                        isSaving = false,
                         successMessage = "Incidencia reportada exitosamente"
                     )
+                    refresh()
                 },
                 onFailure = { exception ->
                     _uiState.value = _uiState.value.copy(
-                        isLoading = false,
+                        isSaving = false,
                         error = exception.message ?: "Error al reportar incidencia"
                     )
                 }
@@ -151,20 +177,20 @@ class MantenimientoViewModel(
     
     fun deleteIssue(issueId: Int) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null, successMessage = null)
+            _uiState.value = _uiState.value.copy(isSaving = true, error = null, successMessage = null)
             val result = repository.deleteIssue(issueId)
             
             result.fold(
                 onSuccess = {
                     _uiState.value = _uiState.value.copy(
                         issues = _uiState.value.issues.filter { it.id != issueId },
-                        isLoading = false,
+                        isSaving = false,
                         successMessage = "Incidencia eliminada exitosamente"
                     )
                 },
                 onFailure = { exception ->
                     _uiState.value = _uiState.value.copy(
-                        isLoading = false,
+                        isSaving = false,
                         error = exception.message ?: "Error al eliminar incidencia"
                     )
                 }
@@ -188,22 +214,47 @@ class MantenimientoViewModel(
         }
     }
     
-    fun blockRoom(request: BlockRoomRequest) {
+    fun loadAllRooms() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null, successMessage = null)
+            val result = repository.getAllRooms()
+            result.fold(
+                onSuccess = { rooms ->
+                    _uiState.value = _uiState.value.copy(allRooms = rooms)
+                },
+                onFailure = { /* Ignorar */ }
+            )
+        }
+    }
+    
+    fun blockRoom(
+        room: String,
+        reason: String,
+        blockedUntil: String,
+        blockedBy: String?
+    ) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSaving = true, error = null, successMessage = null)
+            
+            val request = BlockRoomRequest(
+                room = room,
+                reason = reason,
+                blockedUntil = blockedUntil,
+                blockedBy = blockedBy
+            )
+            
             val result = repository.blockRoom(request)
             
             result.fold(
-                onSuccess = { room ->
+                onSuccess = {
                     _uiState.value = _uiState.value.copy(
-                        blockedRooms = _uiState.value.blockedRooms + room,
-                        isLoading = false,
+                        isSaving = false,
                         successMessage = "Habitación bloqueada exitosamente"
                     )
+                    refresh()
                 },
                 onFailure = { exception ->
                     _uiState.value = _uiState.value.copy(
-                        isLoading = false,
+                        isSaving = false,
                         error = exception.message ?: "Error al bloquear habitación"
                     )
                 }
@@ -213,21 +264,21 @@ class MantenimientoViewModel(
     
     fun unblockRoom(roomId: Int) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null, successMessage = null)
+            _uiState.value = _uiState.value.copy(isSaving = true, error = null, successMessage = null)
             val result = repository.unblockRoom(roomId)
             
             result.fold(
                 onSuccess = {
                     _uiState.value = _uiState.value.copy(
                         blockedRooms = _uiState.value.blockedRooms.filter { it.id != roomId },
-                        isLoading = false,
-                        successMessage = "Habitación desbloqueada exitosamente"
+                        isSaving = false,
+                        successMessage = "Habitación liberada exitosamente"
                     )
                 },
                 onFailure = { exception ->
                     _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = exception.message ?: "Error al desbloquear habitación"
+                        isSaving = false,
+                        error = exception.message ?: "Error al liberar habitación"
                     )
                 }
             )
@@ -243,10 +294,13 @@ class MantenimientoViewModel(
     }
     
     fun refresh() {
-        loadSystemStatus()
-        loadBriquetteHistory()
-        loadIssues()
-        loadBlockedRooms()
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            loadSystemStatus()
+            loadBriquetteHistory()
+            loadIssues()
+            loadBlockedRooms()
+        }
     }
 }
 

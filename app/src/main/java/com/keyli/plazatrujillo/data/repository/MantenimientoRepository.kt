@@ -9,11 +9,13 @@ import kotlinx.coroutines.withContext
 class MantenimientoRepository {
     private val apiService: ApiService = ApiClient.create()
     
-    suspend fun getSystemStatus(): Result<SystemStatus> = withContext(Dispatchers.IO) {
+    // ==================== SISTEMA DE AGUA CALIENTE ====================
+    
+    suspend fun getSystemStatus(): Result<SystemStatusResponse> = withContext(Dispatchers.IO) {
         try {
             val response = apiService.getSystemStatus()
-            if (response.isSuccessful && response.body() != null && response.body()!!.status != null) {
-                Result.success(response.body()!!.status!!)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
             } else {
                 Result.failure(Exception("Error: ${response.code()} - ${response.message()}"))
             }
@@ -22,11 +24,11 @@ class MantenimientoRepository {
         }
     }
     
-    suspend fun updateSystemStatus(request: UpdateSystemStatusRequest): Result<SystemStatus> = withContext(Dispatchers.IO) {
+    suspend fun updateSystemStatus(request: UpdateSystemStatusRequest): Result<UpdateSystemStatusResponse> = withContext(Dispatchers.IO) {
         try {
             val response = apiService.updateSystemStatus(request)
-            if (response.isSuccessful && response.body() != null && response.body()!!.status != null) {
-                Result.success(response.body()!!.status!!)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
             } else {
                 Result.failure(Exception("Error: ${response.code()} - ${response.message()}"))
             }
@@ -34,12 +36,15 @@ class MantenimientoRepository {
             Result.failure(e)
         }
     }
+    
+    // ==================== HISTORIAL DE BRIQUETAS ====================
     
     suspend fun getBriquetteHistory(): Result<List<BriquetteRecord>> = withContext(Dispatchers.IO) {
         try {
             val response = apiService.getBriquetteHistory()
             if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!.history ?: emptyList())
+                val historyResponse = response.body()!!
+                Result.success(historyResponse.history ?: emptyList())
             } else {
                 Result.failure(Exception("Error: ${response.code()} - ${response.message()}"))
             }
@@ -48,11 +53,11 @@ class MantenimientoRepository {
         }
     }
     
-    suspend fun registerBriquetteChange(request: RegisterBriquetteChangeRequest): Result<BriquetteRecord> = withContext(Dispatchers.IO) {
+    suspend fun registerBriquetteChange(request: RegisterBriquetteChangeRequest): Result<RegisterBriquetteChangeResponse> = withContext(Dispatchers.IO) {
         try {
             val response = apiService.registerBriquetteChange(request)
-            if (response.isSuccessful && response.body() != null && response.body()!!.record != null) {
-                Result.success(response.body()!!.record!!)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
             } else {
                 Result.failure(Exception("Error: ${response.code()} - ${response.message()}"))
             }
@@ -60,12 +65,15 @@ class MantenimientoRepository {
             Result.failure(e)
         }
     }
+    
+    // ==================== INCIDENCIAS ====================
     
     suspend fun getMaintenanceIssues(): Result<List<MaintenanceIssue>> = withContext(Dispatchers.IO) {
         try {
             val response = apiService.getMaintenanceIssues()
             if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!.issues ?: emptyList())
+                val issuesResponse = response.body()!!
+                Result.success(issuesResponse.issues ?: emptyList())
             } else {
                 Result.failure(Exception("Error: ${response.code()} - ${response.message()}"))
             }
@@ -74,11 +82,11 @@ class MantenimientoRepository {
         }
     }
     
-    suspend fun reportIssue(request: ReportIssueRequest): Result<MaintenanceIssue> = withContext(Dispatchers.IO) {
+    suspend fun reportIssue(request: ReportIssueRequest): Result<ReportIssueResponse> = withContext(Dispatchers.IO) {
         try {
             val response = apiService.reportIssue(request)
-            if (response.isSuccessful && response.body() != null && response.body()!!.issue != null) {
-                Result.success(response.body()!!.issue!!)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
             } else {
                 Result.failure(Exception("Error: ${response.code()} - ${response.message()}"))
             }
@@ -87,11 +95,11 @@ class MantenimientoRepository {
         }
     }
     
-    suspend fun deleteIssue(issueId: Int): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun deleteIssue(issueId: Int): Result<DeleteIssueResponse> = withContext(Dispatchers.IO) {
         try {
             val response = apiService.deleteIssue(issueId)
-            if (response.isSuccessful) {
-                Result.success(Unit)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
             } else {
                 Result.failure(Exception("Error: ${response.code()} - ${response.message()}"))
             }
@@ -99,12 +107,15 @@ class MantenimientoRepository {
             Result.failure(e)
         }
     }
+    
+    // ==================== HABITACIONES BLOQUEADAS ====================
     
     suspend fun getBlockedRooms(): Result<List<BlockedRoom>> = withContext(Dispatchers.IO) {
         try {
             val response = apiService.getBlockedRooms()
             if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!.rooms ?: emptyList())
+                val blockedResponse = response.body()!!
+                Result.success(blockedResponse.rooms ?: emptyList())
             } else {
                 Result.failure(Exception("Error: ${response.code()} - ${response.message()}"))
             }
@@ -113,11 +124,11 @@ class MantenimientoRepository {
         }
     }
     
-    suspend fun blockRoom(request: BlockRoomRequest): Result<BlockedRoom> = withContext(Dispatchers.IO) {
+    suspend fun blockRoom(request: BlockRoomRequest): Result<BlockRoomResponse> = withContext(Dispatchers.IO) {
         try {
             val response = apiService.blockRoom(request)
-            if (response.isSuccessful && response.body() != null && response.body()!!.room != null) {
-                Result.success(response.body()!!.room!!)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
             } else {
                 Result.failure(Exception("Error: ${response.code()} - ${response.message()}"))
             }
@@ -126,11 +137,27 @@ class MantenimientoRepository {
         }
     }
     
-    suspend fun unblockRoom(roomId: Int): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun unblockRoom(roomId: Int): Result<UnblockRoomResponse> = withContext(Dispatchers.IO) {
         try {
             val response = apiService.unblockRoom(roomId)
-            if (response.isSuccessful) {
-                Result.success(Unit)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("Error: ${response.code()} - ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    // ==================== HABITACIONES ====================
+    
+    suspend fun getAllRooms(): Result<List<Room>> = withContext(Dispatchers.IO) {
+        try {
+            val response = apiService.getAllRooms()
+            if (response.isSuccessful && response.body() != null) {
+                val roomsResponse = response.body()!!
+                Result.success(roomsResponse.rooms ?: emptyList())
             } else {
                 Result.failure(Exception("Error: ${response.code()} - ${response.message()}"))
             }

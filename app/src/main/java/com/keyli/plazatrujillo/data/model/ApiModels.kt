@@ -330,11 +330,22 @@ data class StockResponse(
 
 data class StockItem(
     @SerializedName("category") val category: String? = null,
-    @SerializedName("quantity") val quantity: Int? = null
+    @SerializedName("total") val total: Int? = null,
+    @SerializedName("disponible") val disponible: Int? = null,
+    @SerializedName("lavanderia") val lavanderia: Int? = null,
+    @SerializedName("danado") val danado: Int? = null
+)
+
+data class StockItemRequest(
+    @SerializedName("category") val category: String,
+    @SerializedName("total") val total: Int? = null,
+    @SerializedName("disponible") val disponible: Int? = null,
+    @SerializedName("lavanderia") val lavanderia: Int? = null,
+    @SerializedName("danado") val danado: Int? = null
 )
 
 data class UpsertStockRequest(
-    @SerializedName("items") val items: List<StockItem>
+    @SerializedName("items") val items: List<StockItemRequest>
 )
 
 data class UpsertStockResponse(
@@ -342,13 +353,14 @@ data class UpsertStockResponse(
 )
 
 data class SendLaundryRequest(
-    @SerializedName("room_number") val roomNumber: String,
-    @SerializedName("items") val items: List<LaundryItem>
-)
-
-data class LaundryItem(
-    @SerializedName("category") val category: String,
-    @SerializedName("quantity") val quantity: Int
+    @SerializedName("toalla_grande") val toallaGrande: Int = 0,
+    @SerializedName("toalla_mediana") val toallaMediana: Int = 0,
+    @SerializedName("toalla_chica") val toallaChica: Int = 0,
+    @SerializedName("sabana_media_plaza") val sabanaMediaPlaza: Int = 0,
+    @SerializedName("sabana_una_plaza") val sabanaUnaPlaza: Int = 0,
+    @SerializedName("cubrecama_media_plaza") val cubrecamaMediaPlaza: Int = 0,
+    @SerializedName("cubrecama_una_plaza") val cubrecamaUnaPlaza: Int = 0,
+    @SerializedName("funda") val funda: Int = 0
 )
 
 data class SendLaundryResponse(
@@ -356,15 +368,24 @@ data class SendLaundryResponse(
 )
 
 data class LaundryOrder(
-    @SerializedName("code") val code: String? = null,
-    @SerializedName("room_number") val roomNumber: String? = null,
-    @SerializedName("items") val items: List<LaundryItem>? = null,
+    @SerializedName("order_code") val orderCode: String? = null,
     @SerializedName("status") val status: String? = null,
-    @SerializedName("created_at") val createdAt: String? = null
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("returned_at") val returnedAt: String? = null,
+    @SerializedName("toalla_grande") val toallaGrande: Int? = null,
+    @SerializedName("toalla_mediana") val toallaMediana: Int? = null,
+    @SerializedName("toalla_chica") val toallaChica: Int? = null,
+    @SerializedName("sabana_media_plaza") val sabanaMediaPlaza: Int? = null,
+    @SerializedName("sabana_una_plaza") val sabanaUnaPlaza: Int? = null,
+    @SerializedName("cubrecama_media_plaza") val cubrecamaMediaPlaza: Int? = null,
+    @SerializedName("cubrecama_una_plaza") val cubrecamaUnaPlaza: Int? = null,
+    @SerializedName("funda") val funda: Int? = null
 )
 
 data class ReturnOrderResponse(
-    @SerializedName("order") val order: LaundryOrder? = null
+    @SerializedName("ok") val ok: Boolean? = null,
+    @SerializedName("estado") val estado: String? = null,
+    @SerializedName("fechaRetorno") val fechaRetorno: String? = null
 )
 
 data class ListOrdersResponse(
@@ -378,88 +399,131 @@ data class UpdateDamageRequest(
 )
 
 data class UpdateDamageResponse(
-    @SerializedName("damage") val damage: Map<String, Int>? = null
+    @SerializedName("category") val category: String? = null,
+    @SerializedName("disponible") val disponible: Int? = null,
+    @SerializedName("lavanderia") val lavanderia: Int? = null,
+    @SerializedName("danado") val danado: Int? = null
 )
 
 // ==================== CAJA MODELS ====================
 data class ListTodayTransactionsResponse(
-    @SerializedName("transactions") val transactions: List<Transaction>? = null
+    @SerializedName("transactions") val transactions: List<CajaTransaction>? = null
 )
 
-data class Transaction(
+data class CajaTransaction(
     @SerializedName("id") val id: Int? = null,
-    @SerializedName("amount") val amount: Double? = null,
+    @SerializedName("transactionId") val transactionId: String? = null,
+    @SerializedName("type") val type: String? = null,
+    @SerializedName("guest") val guest: String? = null,
     @SerializedName("method") val method: String? = null,
-    @SerializedName("date") val date: String? = null,
-    @SerializedName("description") val description: String? = null
+    @SerializedName("amount") val amount: Double? = null,
+    @SerializedName("time") val time: String? = null,
+    @SerializedName("status") val status: String? = null
 )
 
 data class TodayTotalsResponse(
-    @SerializedName("totals") val totals: Totals? = null
+    @SerializedName("totals") val totals: CajaTotals? = null
 )
 
-data class Totals(
-    @SerializedName("methods") val methods: Map<String, Double>? = null,
+data class CajaTotals(
+    @SerializedName("methods") val methods: MethodTotals? = null,
     @SerializedName("total") val total: Double? = null
 )
 
-data class CreatePaymentRequest(
-    @SerializedName("amount") val amount: Double,
-    @SerializedName("method") val method: String,
-    @SerializedName("description") val description: String? = null
+data class MethodTotals(
+    @SerializedName("Yape") val yape: Double? = null,
+    @SerializedName("Efectivo") val efectivo: Double? = null,
+    @SerializedName("Tarjeta") val tarjeta: Double? = null,
+    @SerializedName("Transferencia") val transferencia: Double? = null
 )
 
+data class CreatePaymentRequest(
+    @SerializedName("type") val type: String,
+    @SerializedName("guest") val guest: String,
+    @SerializedName("method") val method: String,
+    @SerializedName("amount") val amount: Double,
+    @SerializedName("reservationCode") val reservationCode: String? = null
+)
+
+// createPayment devuelve directamente el objeto, no un wrapper
 data class CreatePaymentResponse(
-    @SerializedName("transaction") val transaction: Transaction? = null
+    @SerializedName("id") val id: Int? = null,
+    @SerializedName("transactionId") val transactionId: String? = null,
+    @SerializedName("type") val type: String? = null,
+    @SerializedName("guest") val guest: String? = null,
+    @SerializedName("method") val method: String? = null,
+    @SerializedName("amount") val amount: Double? = null,
+    @SerializedName("time") val time: String? = null,
+    @SerializedName("status") val status: String? = null
 )
 
 data class EmitReceiptRequest(
-    @SerializedName("transaction_id") val transactionId: Int,
-    @SerializedName("client_name") val clientName: String? = null
+    @SerializedName("paymentId") val paymentId: Int,
+    @SerializedName("numero") val numero: String? = null,
+    @SerializedName("fecha") val fecha: String? = null,
+    @SerializedName("senores") val senores: String? = null,
+    @SerializedName("direccion") val direccion: String? = null,
+    @SerializedName("dni") val dni: String? = null,
+    @SerializedName("concepto") val concepto: String? = null,
+    @SerializedName("importe") val importe: Double? = null,
+    @SerializedName("total") val total: Double? = null,
+    @SerializedName("son") val son: String? = null,
+    @SerializedName("canceladoFecha") val canceladoFecha: String? = null
 )
 
 data class EmitReceiptResponse(
-    @SerializedName("receipt") val receipt: Receipt? = null
+    @SerializedName("receipt") val receipt: CajaReceipt? = null
 )
 
-data class Receipt(
+data class CajaReceipt(
     @SerializedName("id") val id: Int? = null,
-    @SerializedName("transaction_id") val transactionId: Int? = null,
-    @SerializedName("client_name") val clientName: String? = null,
-    @SerializedName("amount") val amount: Double? = null,
-    @SerializedName("date") val date: String? = null
+    @SerializedName("paymentId") val paymentId: Int? = null,
+    @SerializedName("numero") val numero: String? = null,
+    @SerializedName("fecha") val fecha: String? = null,
+    @SerializedName("senores") val senores: String? = null,
+    @SerializedName("direccion") val direccion: String? = null,
+    @SerializedName("dni") val dni: String? = null,
+    @SerializedName("concepto") val concepto: String? = null,
+    @SerializedName("importe") val importe: Double? = null,
+    @SerializedName("total") val total: Double? = null,
+    @SerializedName("son") val son: String? = null,
+    @SerializedName("canceladoFecha") val canceladoFecha: String? = null
 )
 
 data class TodayClientsResponse(
-    @SerializedName("clients") val clients: List<Client>? = null,
-    @SerializedName("total") val total: Int? = null
+    @SerializedName("clients") val clients: List<CajaClient>? = null,
+    @SerializedName("total") val total: Double? = null
 )
 
 data class AllClientsResponse(
-    @SerializedName("clients") val clients: List<Client>? = null,
-    @SerializedName("total") val total: Int? = null
+    @SerializedName("clients") val clients: List<CajaClient>? = null,
+    @SerializedName("total") val total: Double? = null
 )
 
-data class Client(
-    @SerializedName("name") val name: String? = null,
-    @SerializedName("email") val email: String? = null,
-    @SerializedName("phone") val phone: String? = null
+data class CajaClient(
+    @SerializedName("guest") val guest: String? = null,
+    @SerializedName("total") val total: Double? = null
 )
 
 data class PaidClientsResponse(
-    @SerializedName("clients") val clients: List<Client>? = null,
+    @SerializedName("clients") val clients: List<PaidClient>? = null,
     @SerializedName("total") val total: Int? = null
+)
+
+data class PaidClient(
+    @SerializedName("guest") val guest: String? = null,
+    @SerializedName("reservationCode") val reservationCode: String? = null
 )
 
 data class PaidClientsDetailsResponse(
-    @SerializedName("clients") val clients: List<ClientDetail>? = null,
+    @SerializedName("clients") val clients: List<PaidClientDetail>? = null,
     @SerializedName("total") val total: Int? = null
 )
 
-data class ClientDetail(
-    @SerializedName("name") val name: String? = null,
+data class PaidClientDetail(
+    @SerializedName("guest") val guest: String? = null,
     @SerializedName("dni") val dni: String? = null,
-    @SerializedName("address") val address: String? = null
+    @SerializedName("direccion") val direccion: String? = null
 )
 
 // ==================== MESSAGING MODELS ====================
@@ -534,95 +598,126 @@ data class SendMessageResponse(
 )
 
 // ==================== MANTENIMIENTO MODELS ====================
-data class SystemStatusResponse(
-    @SerializedName("status") val status: SystemStatus? = null
+
+// Sistema de Agua Caliente
+data class MaintenanceDateTime(
+    @SerializedName("date") val date: String? = null,
+    @SerializedName("time") val time: String? = null
 )
 
-data class SystemStatus(
-    @SerializedName("water_heating") val waterHeating: Boolean? = null,
-    @SerializedName("temperature") val temperature: Double? = null,
-    @SerializedName("last_update") val lastUpdate: String? = null
+data class SystemStatusResponse(
+    @SerializedName("operationalStatus") val operationalStatus: String? = null,
+    @SerializedName("briquettesThisMonth") val briquettesThisMonth: Int? = null,
+    @SerializedName("lastMaintenance") val lastMaintenance: MaintenanceDateTime? = null,
+    @SerializedName("nextMaintenance") val nextMaintenance: MaintenanceDateTime? = null
 )
 
 data class UpdateSystemStatusRequest(
-    @SerializedName("water_heating") val waterHeating: Boolean? = null,
-    @SerializedName("temperature") val temperature: Double? = null
+    @SerializedName("operationalStatus") val operationalStatus: String? = null,
+    @SerializedName("briquettesThisMonth") val briquettesThisMonth: Int? = null,
+    @SerializedName("lastMaintenance") val lastMaintenance: MaintenanceDateTime? = null,
+    @SerializedName("nextMaintenance") val nextMaintenance: MaintenanceDateTime? = null
 )
 
 data class UpdateSystemStatusResponse(
-    @SerializedName("status") val status: SystemStatus? = null
+    @SerializedName("operationalStatus") val operationalStatus: String? = null,
+    @SerializedName("briquettesThisMonth") val briquettesThisMonth: Int? = null,
+    @SerializedName("lastMaintenance") val lastMaintenance: MaintenanceDateTime? = null,
+    @SerializedName("nextMaintenance") val nextMaintenance: MaintenanceDateTime? = null
 )
 
+// Historial de Briquetas
 data class BriquetteHistoryResponse(
     @SerializedName("history") val history: List<BriquetteRecord>? = null
 )
 
 data class BriquetteRecord(
     @SerializedName("id") val id: Int? = null,
-    @SerializedName("quantity") val quantity: Int? = null,
     @SerializedName("date") val date: String? = null,
-    @SerializedName("notes") val notes: String? = null
+    @SerializedName("time") val time: String? = null,
+    @SerializedName("quantity") val quantity: Int? = null
 )
 
 data class RegisterBriquetteChangeRequest(
     @SerializedName("quantity") val quantity: Int,
-    @SerializedName("notes") val notes: String? = null
+    @SerializedName("date") val date: String,
+    @SerializedName("time") val time: String,
+    @SerializedName("operationalStatus") val operationalStatus: String? = null
 )
 
 data class RegisterBriquetteChangeResponse(
-    @SerializedName("record") val record: BriquetteRecord? = null
+    @SerializedName("id") val id: Int? = null,
+    @SerializedName("date") val date: String? = null,
+    @SerializedName("time") val time: String? = null,
+    @SerializedName("quantity") val quantity: Int? = null
 )
 
+// Incidencias de Mantenimiento
 data class MaintenanceIssuesResponse(
     @SerializedName("issues") val issues: List<MaintenanceIssue>? = null
 )
 
 data class MaintenanceIssue(
     @SerializedName("id") val id: Int? = null,
-    @SerializedName("title") val title: String? = null,
-    @SerializedName("description") val description: String? = null,
-    @SerializedName("room_number") val roomNumber: String? = null,
-    @SerializedName("status") val status: String? = null,
-    @SerializedName("reported_at") val reportedAt: String? = null
+    @SerializedName("room") val room: String? = null,
+    @SerializedName("problem") val problem: String? = null,
+    @SerializedName("priority") val priority: String? = null,
+    @SerializedName("technician") val technician: String? = null,
+    @SerializedName("reportedDate") val reportedDate: String? = null
 )
 
 data class ReportIssueRequest(
-    @SerializedName("title") val title: String,
-    @SerializedName("description") val description: String,
-    @SerializedName("room_number") val roomNumber: String? = null
+    @SerializedName("room") val room: String,
+    @SerializedName("problem") val problem: String,
+    @SerializedName("priority") val priority: String = "Media",
+    @SerializedName("technician") val technician: String? = null
 )
 
 data class ReportIssueResponse(
-    @SerializedName("issue") val issue: MaintenanceIssue? = null
+    @SerializedName("id") val id: Int? = null,
+    @SerializedName("room") val room: String? = null,
+    @SerializedName("problem") val problem: String? = null,
+    @SerializedName("priority") val priority: String? = null,
+    @SerializedName("technician") val technician: String? = null,
+    @SerializedName("reportedDate") val reportedDate: String? = null
 )
 
 data class DeleteIssueResponse(
-    @SerializedName("message") val message: String? = null
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("room") val room: String? = null
 )
 
+// Habitaciones Bloqueadas
 data class BlockedRoomsResponse(
     @SerializedName("rooms") val rooms: List<BlockedRoom>? = null
 )
 
 data class BlockedRoom(
     @SerializedName("id") val id: Int? = null,
-    @SerializedName("room_number") val roomNumber: String? = null,
+    @SerializedName("room") val room: String? = null,
     @SerializedName("reason") val reason: String? = null,
-    @SerializedName("blocked_until") val blockedUntil: String? = null
+    @SerializedName("blockedUntil") val blockedUntil: String? = null,
+    @SerializedName("blockedBy") val blockedBy: String? = null
 )
 
 data class BlockRoomRequest(
-    @SerializedName("room_number") val roomNumber: String,
+    @SerializedName("room") val room: String,
     @SerializedName("reason") val reason: String,
-    @SerializedName("blocked_until") val blockedUntil: String? = null
+    @SerializedName("blockedUntil") val blockedUntil: String,
+    @SerializedName("blockedBy") val blockedBy: String? = null
 )
 
 data class BlockRoomResponse(
-    @SerializedName("room") val room: BlockedRoom? = null
+    @SerializedName("id") val id: Int? = null,
+    @SerializedName("room") val room: String? = null,
+    @SerializedName("reason") val reason: String? = null,
+    @SerializedName("blockedUntil") val blockedUntil: String? = null,
+    @SerializedName("blockedBy") val blockedBy: String? = null
 )
 
 data class UnblockRoomResponse(
-    @SerializedName("message") val message: String? = null
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("room") val room: String? = null
 )
 
 // ==================== CHATBOT MODELS ====================

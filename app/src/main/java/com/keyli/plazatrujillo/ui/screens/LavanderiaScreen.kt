@@ -11,8 +11,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircleOutline
-import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.LocalLaundryService
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,170 +28,272 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import com.keyli.plazatrujillo.ui.theme.*
+import com.keyli.plazatrujillo.ui.viewmodel.LavanderiaViewModel
+import com.keyli.plazatrujillo.ui.viewmodel.LAUNDRY_CATEGORIES
+import kotlinx.coroutines.delay
 
-// --- DATA CLASS ---
-data class LaundryItem(
-    val name: String,
-    val total: Int = 0,
-    val disponibles: Int = 0,
-    val sucias: Int = 0, // "En Lavandería"
-    val danados: Int = 0
-)
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LavanderiaScreen(navController: NavHostController) {
+fun LavanderiaScreen(
+    navController: NavHostController,
+    viewModel: LavanderiaViewModel = viewModel()
+) {
     val scrollState = rememberScrollState()
+    val uiState by viewModel.uiState.collectAsState()
 
-    // --- COLORES DINÁMICOS ---
+    // Colores dinámicos
     val bgColor = MaterialTheme.colorScheme.background
     val textColor = MaterialTheme.colorScheme.onBackground
     val subTextColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
     val cardBgColor = MaterialTheme.colorScheme.surface
 
-    // --- ESTADO MUTABLE (Para que se pueda editar) ---
-    // Usamos remember { mutableStateListOf(...) } para que los cambios se reflejen en la UI
-    val inventoryList = remember {
-        mutableStateListOf(
-            LaundryItem("Toalla grande", 150, 100, 45, 5),
-            LaundryItem("Toalla mediana", 120, 80, 35, 5),
-            LaundryItem("Toalla chica", 200, 150, 40, 10),
-            LaundryItem("Sábana 1/2 plaza", 80, 60, 15, 5),
-            LaundryItem("Sábana 1 plaza", 90, 70, 15, 5),
-            LaundryItem("Cubrecama 1/2 plaza", 40, 30, 8, 2),
-            LaundryItem("Cubrecama 1 plaza", 45, 35, 8, 2),
-            LaundryItem("Funda de almohada", 300, 200, 90, 10)
-        )
+    // Snackbar para errores y mensajes
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Mostrar errores
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
+            snackbarHostState.showSnackbar(error)
+            viewModel.clearError()
+        }
+    }
+    
+    // Mostrar mensajes de éxito
+    LaunchedEffect(uiState.successMessage) {
+        uiState.successMessage?.let { msg ->
+            snackbarHostState.showSnackbar(msg)
+            delay(1500)
+            viewModel.clearSuccessMessage()
+        }
     }
 
-    // Cálculos automáticos para las tarjetas de arriba
-    val totalGlobal = inventoryList.sumOf { it.total }
-    val totalDisponibles = inventoryList.sumOf { it.disponibles }
-    val totalSucias = inventoryList.sumOf { it.sucias }
-    val totalDanados = inventoryList.sumOf { it.danados }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(bgColor)
-            .verticalScroll(scrollState)
-            .padding(16.dp)
-    ) {
-        // --- CABECERA ---
-        Text(
-            text = "Lavandería",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = textColor
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = "Administra el inventario de lavandería",
-            fontSize = 14.sp,
-            color = subTextColor
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // --- TARJETAS DE RESUMEN (TOP) ---
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SummaryCard(
-                    title = "Total Inventario",
-                    count = totalGlobal,
-                    icon = Icons.Default.Inventory2,
-                    iconColor = Color(0xFF9C27B0),
-                    bgColor = Color(0xFFF3E5F5),
-                    modifier = Modifier.weight(1f)
-                )
-                SummaryCard(
-                    title = "Total Disponibles",
-                    count = totalDisponibles,
-                    icon = Icons.Default.CheckCircleOutline,
-                    iconColor = Color(0xFF4CAF50),
-                    bgColor = Color(0xFFE8F5E9),
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SummaryCard(
-                    title = "En Lavandería",
-                    count = totalSucias,
-                    icon = Icons.Default.DeleteOutline,
-                    iconColor = Color(0xFF2196F3),
-                    bgColor = Color(0xFFE3F2FD),
-                    modifier = Modifier.weight(1f)
-                )
-                SummaryCard(
-                    title = "Dañados",
-                    count = totalDanados,
-                    icon = Icons.Default.WarningAmber,
-                    iconColor = Color(0xFFF44336),
-                    bgColor = Color(0xFFFFEBEE),
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // --- SECCIÓN INVENTARIO DE STOCK ---
-        Text(
-            text = "Inventario de Stock",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = textColor
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = "Toca los recuadros para editar las cantidades",
-            fontSize = 13.sp,
-            color = subTextColor
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // --- TABLA ---
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
-            colors = CardDefaults.cardColors(containerColor = cardBgColor),
-            elevation = CardDefaults.cardElevation(1.dp)
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = bgColor
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-
-                // Encabezados Tabla
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+            if (uiState.isLoading && uiState.stock.isEmpty()) {
+                // Loading inicial
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text("Artículo", modifier = Modifier.weight(2.5f), color = subTextColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    Text("Total", modifier = Modifier.weight(1f), color = subTextColor, fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-                    Text("Disp.", modifier = Modifier.weight(1f), color = subTextColor, fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-                    Text("Sucias", modifier = Modifier.weight(1f), color = subTextColor, fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-                    Text("Dañados", modifier = Modifier.weight(1f), color = subTextColor, fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    CircularProgressIndicator()
                 }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                        .padding(16.dp)
+                ) {
+                    // --- CABECERA ---
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Lavandería",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = textColor
+                            )
+                            Text(
+                                text = "Administra el inventario de lavandería",
+                                fontSize = 14.sp,
+                                color = subTextColor
+                            )
+                        }
+                        
+                        // Botón refrescar
+                        IconButton(
+                            onClick = { viewModel.refresh() },
+                            enabled = !uiState.isLoading
+                        ) {
+                            if (uiState.isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.Refresh,
+                                    contentDescription = "Refrescar",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
 
-                Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                // Filas Editables
-                inventoryList.forEachIndexed { index, item ->
-                    InventoryTableItem(
-                        item = item,
-                        // Callbacks para actualizar la lista mutable
-                        onTotalChange = { newVal -> inventoryList[index] = item.copy(total = newVal) },
-                        onDispChange = { newVal -> inventoryList[index] = item.copy(disponibles = newVal) },
-                        onSuciasChange = { newVal -> inventoryList[index] = item.copy(sucias = newVal) },
-                        onDanadosChange = { newVal -> inventoryList[index] = item.copy(danados = newVal) }
+                    // --- TARJETAS DE RESUMEN ---
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            SummaryCard(
+                                title = "Total Inventario",
+                                count = uiState.totalInventario,
+                                icon = Icons.Default.Inventory2,
+                                iconColor = Color(0xFF9C27B0),
+                                bgColor = Color(0xFFF3E5F5),
+                                modifier = Modifier.weight(1f)
+                            )
+                            SummaryCard(
+                                title = "Total Disponibles",
+                                count = uiState.totalDisponible,
+                                icon = Icons.Default.CheckCircleOutline,
+                                iconColor = Color(0xFF4CAF50),
+                                bgColor = Color(0xFFE8F5E9),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            SummaryCard(
+                                title = "En Lavandería",
+                                count = uiState.totalLavanderia,
+                                icon = Icons.Default.LocalLaundryService,
+                                iconColor = Color(0xFF2196F3),
+                                bgColor = Color(0xFFE3F2FD),
+                                modifier = Modifier.weight(1f)
+                            )
+                            SummaryCard(
+                                title = "Dañados",
+                                count = uiState.totalDanado,
+                                icon = Icons.Default.WarningAmber,
+                                iconColor = Color(0xFFF44336),
+                                bgColor = Color(0xFFFFEBEE),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    // --- SECCIÓN INVENTARIO DE STOCK ---
+                    Text(
+                        text = "Inventario de Stock",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = textColor
                     )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Toca los recuadros para editar las cantidades",
+                        fontSize = 13.sp,
+                        color = subTextColor
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // --- TABLA ---
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(containerColor = cardBgColor),
+                        elevation = CardDefaults.cardElevation(1.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            // Encabezados Tabla
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "Artículo",
+                                    modifier = Modifier.weight(2.5f),
+                                    color = subTextColor,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "Total",
+                                    modifier = Modifier.weight(1f),
+                                    color = subTextColor,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center
+                                )
+                                Text(
+                                    "Disp.",
+                                    modifier = Modifier.weight(1f),
+                                    color = subTextColor,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center
+                                )
+                                Text(
+                                    "Sucias",
+                                    modifier = Modifier.weight(1f),
+                                    color = subTextColor,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center
+                                )
+                                Text(
+                                    "Dañados",
+                                    modifier = Modifier.weight(1f),
+                                    color = subTextColor,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                            // Filas - Iterar por categorías definidas
+                            LAUNDRY_CATEGORIES.forEach { category ->
+                                val stockItem = uiState.stockMap[category.key]
+                                
+                                LavanderiaInventoryRow(
+                                    itemName = category.label,
+                                    total = stockItem?.total ?: 0,
+                                    disponible = stockItem?.disponible ?: 0,
+                                    lavanderia = stockItem?.lavanderia ?: 0,
+                                    danado = stockItem?.danado ?: 0,
+                                    isSaving = uiState.isSaving,
+                                    onTotalChange = { newVal ->
+                                        viewModel.updateStockField(category.key, "total", newVal)
+                                    },
+                                    onDisponibleChange = { newVal ->
+                                        viewModel.updateStockField(category.key, "disponible", newVal)
+                                    },
+                                    onLavanderiaChange = { newVal ->
+                                        viewModel.updateStockField(category.key, "lavanderia", newVal)
+                                    },
+                                    onDanadoChange = { newVal ->
+                                        viewModel.updateStockField(category.key, "danado", newVal)
+                                    }
+                                )
+                                HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(80.dp))
                 }
             }
+            
+            // Indicador de guardado
+            if (uiState.isSaving) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter)
+                )
+            }
         }
-
-        Spacer(modifier = Modifier.height(80.dp))
     }
 }
 
@@ -247,12 +350,17 @@ fun SummaryCard(
 }
 
 @Composable
-fun InventoryTableItem(
-    item: LaundryItem,
+fun LavanderiaInventoryRow(
+    itemName: String,
+    total: Int,
+    disponible: Int,
+    lavanderia: Int,
+    danado: Int,
+    isSaving: Boolean,
     onTotalChange: (Int) -> Unit,
-    onDispChange: (Int) -> Unit,
-    onSuciasChange: (Int) -> Unit,
-    onDanadosChange: (Int) -> Unit
+    onDisponibleChange: (Int) -> Unit,
+    onLavanderiaChange: (Int) -> Unit,
+    onDanadoChange: (Int) -> Unit
 ) {
     val textColor = MaterialTheme.colorScheme.onSurface
 
@@ -264,7 +372,7 @@ fun InventoryTableItem(
     ) {
         // Nombre del Artículo
         Text(
-            text = item.name,
+            text = itemName,
             modifier = Modifier.weight(2.5f),
             color = textColor,
             fontSize = 13.sp,
@@ -272,13 +380,33 @@ fun InventoryTableItem(
         )
 
         // Cajas editables
-        EditableNumberBox(value = item.total, onValueChange = onTotalChange, modifier = Modifier.weight(1f))
+        EditableNumberBox(
+            value = total,
+            onValueChange = onTotalChange,
+            enabled = !isSaving,
+            modifier = Modifier.weight(1f)
+        )
         Spacer(modifier = Modifier.width(4.dp))
-        EditableNumberBox(value = item.disponibles, onValueChange = onDispChange, modifier = Modifier.weight(1f))
+        EditableNumberBox(
+            value = disponible,
+            onValueChange = onDisponibleChange,
+            enabled = !isSaving,
+            modifier = Modifier.weight(1f)
+        )
         Spacer(modifier = Modifier.width(4.dp))
-        EditableNumberBox(value = item.sucias, onValueChange = onSuciasChange, modifier = Modifier.weight(1f))
+        EditableNumberBox(
+            value = lavanderia,
+            onValueChange = onLavanderiaChange,
+            enabled = !isSaving,
+            modifier = Modifier.weight(1f)
+        )
         Spacer(modifier = Modifier.width(4.dp))
-        EditableNumberBox(value = item.danados, onValueChange = onDanadosChange, modifier = Modifier.weight(1f))
+        EditableNumberBox(
+            value = danado,
+            onValueChange = onDanadoChange,
+            enabled = !isSaving,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
@@ -286,10 +414,15 @@ fun InventoryTableItem(
 fun EditableNumberBox(
     value: Int,
     onValueChange: (Int) -> Unit,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-    val boxBg = MaterialTheme.colorScheme.background
+    val boxBg = if (enabled) {
+        MaterialTheme.colorScheme.background
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    }
     val textColor = MaterialTheme.colorScheme.onBackground
     val cursorColor = MaterialTheme.colorScheme.primary
 
@@ -307,9 +440,10 @@ fun EditableNumberBox(
                 onValueChange(number)
             }
         },
+        enabled = enabled,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         textStyle = TextStyle(
-            color = textColor,
+            color = if (enabled) textColor else textColor.copy(alpha = 0.6f),
             fontSize = 12.sp,
             textAlign = TextAlign.Center
         ),
@@ -324,7 +458,6 @@ fun EditableNumberBox(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Si el texto está vacío, mostrar "0" en gris (opcional)
                 if (text.isEmpty()) {
                     Text("0", color = textColor.copy(alpha = 0.5f), fontSize = 12.sp)
                 }
