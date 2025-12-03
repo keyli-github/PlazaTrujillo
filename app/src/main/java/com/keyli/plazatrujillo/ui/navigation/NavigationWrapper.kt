@@ -14,12 +14,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.*
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.keyli.plazatrujillo.ui.viewmodel.UserViewModel
+import kotlinx.coroutines.launch
 import com.keyli.plazatrujillo.R
 import com.keyli.plazatrujillo.ui.components.AppDrawer
 import com.keyli.plazatrujillo.ui.screens.*
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,9 +41,13 @@ fun NavigationWrapper(
 
     val showBars = fullScreenRoutes.none { currentRoute.startsWith(it) }
 
+    // Estado que controla si en el Dashboard se muestran los iconos (campana, perfil, modo)
+    var dashboardShowActions by remember { mutableStateOf(false) }
 
     LaunchedEffect(currentRoute) {
         if (drawerState.isOpen) drawerState.close()
+        // Al cambiar de ruta, ocultamos los iconos nuevamente
+        dashboardShowActions = false
     }
 
     val content: @Composable (PaddingValues) -> Unit = { paddingValues ->
@@ -82,7 +84,8 @@ fun NavigationWrapper(
 
             // --- DASHBOARD ---
             composable("dashboard") {
-                DashboardScreen(navController, isDarkTheme, onToggleTheme)
+                // Paso el flag dashboardShowActions para que el Dashboard oculte/muestre sus iconos
+                DashboardScreen(navController, isDarkTheme, onToggleTheme, showHeaderActions = dashboardShowActions)
             }
 
             // --- RESTO DE PANTALLAS ---
@@ -120,12 +123,19 @@ fun NavigationWrapper(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                        IconButton(
+                            onClick = {
+                                scope.launch {
+                                    if (drawerState.isOpen) drawerState.close() else drawerState.open()
+                                }
+                            }
+                        ) {
                             Icon(Icons.Default.Menu, contentDescription = "Menú", tint = MaterialTheme.colorScheme.onSurface)
                         }
                     },
                     actions = {
-                        IconButton(onClick = {}) {
+                        // El botón de los 3 puntos alterna la visibilidad de los iconos en el Dashboard
+                        IconButton(onClick = { dashboardShowActions = !dashboardShowActions }) {
                             Icon(Icons.Default.MoreVert, contentDescription = "Opciones", tint = MaterialTheme.colorScheme.onSurface)
                         }
                     },
@@ -138,7 +148,7 @@ fun NavigationWrapper(
         ) { padding ->
             ModalNavigationDrawer(
                 drawerState = drawerState,
-                gesturesEnabled = drawerState.isOpen,
+                gesturesEnabled = true,
                 scrimColor = Color.Black.copy(alpha = 0.4f),
                 drawerContent = {
                     AppDrawer(
