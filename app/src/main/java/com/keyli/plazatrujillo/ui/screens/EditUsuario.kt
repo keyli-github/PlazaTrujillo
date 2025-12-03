@@ -163,13 +163,19 @@ private fun EditUsuario(
         }
     )
 
-    // Lógica Fecha
+    // Lógica Fecha Corregida
     LaunchedEffect(datePickerState.selectedDateMillis) {
         datePickerState.selectedDateMillis?.let { millis ->
+            // Forzamos UTC para evitar que reste un día por la zona horaria
             val displayFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+            displayFormatter.timeZone = TimeZone.getTimeZone("UTC")
+
             val isoFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            selectedDateDisplay = displayFormatter.format(Date(millis))
-            selectedDateISO = isoFormatter.format(Date(millis))
+            isoFormatter.timeZone = TimeZone.getTimeZone("UTC")
+
+            val date = Date(millis)
+            selectedDateDisplay = displayFormatter.format(date)
+            selectedDateISO = isoFormatter.format(date)
         }
     }
 

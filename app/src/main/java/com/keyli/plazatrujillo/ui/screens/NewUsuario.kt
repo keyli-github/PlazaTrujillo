@@ -99,13 +99,22 @@ fun NewUsuario(navController: NavHostController) {
     var selectedDateISO by remember { mutableStateOf<String?>(null) }
     val datePickerState = rememberDatePickerState()
 
-    // Lógica Fecha
+    // Lógica Fecha (CORREGIDA)
     LaunchedEffect(datePickerState.selectedDateMillis) {
-        datePickerState.selectedDateMillis?.let { millis ->
-            val displayFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-            val isoFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            selectedDateDisplay = displayFormatter.format(Date(millis))
-            selectedDateISO = isoFormatter.format(Date(millis))
+        datePickerState.selectedDateMillis?.let { utcMillis ->
+            // Usamos un calendario en UTC para evitar que reste horas al convertir
+            val calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+            calendar.timeInMillis = utcMillis
+
+            val day = calendar.get(Calendar.DAY_OF_MONTH)
+            val month = calendar.get(Calendar.MONTH) + 1 // Enero es 0
+            val year = calendar.get(Calendar.YEAR)
+
+            // Formatear manualmente para visualización (dd/MM/yyyy)
+            selectedDateDisplay = String.format("%02d/%02d/%04d", day, month, year)
+
+            // Formatear manualmente para la API (yyyy-MM-dd)
+            selectedDateISO = String.format("%04d-%02d-%02d", year, month, day)
         }
     }
     
