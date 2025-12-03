@@ -4,7 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.keyli.plazatrujillo.ui.theme.*
@@ -61,7 +62,7 @@ data class ReservaItem(
 
 data class CalendarDayItem(
     val dayString: String,
-    val fullDate: String, // Para saber qué fecha exacta es (YYYY-MM-DD)
+    val fullDate: String,
     val isCurrentMonth: Boolean,
     val isToday: Boolean
 )
@@ -90,12 +91,11 @@ fun ReservaScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background) // Fondo Global
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(scrollState)
             .padding(16.dp)
     ) {
-
-        // --- CABECERA CON EL BOTÓN NUEVO ---
+        // --- CABECERA ---
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -105,14 +105,10 @@ fun ReservaScreen(
                 text = "Gestión Hotelera",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground // Texto dinámico
+                color = MaterialTheme.colorScheme.onBackground
             )
-
-            // --- BOTÓN NUEVA RESERVA ---
             Button(
-                onClick = {
-                    navController.navigate("new_reservation")
-                },
+                onClick = { navController.navigate("new_reservation") },
                 colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
                 shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
@@ -138,16 +134,16 @@ fun ReservaScreen(
         Text(
             text = "Administra habitaciones, ventas y clientes",
             fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f) // Gris dinámico
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // --- PESTAÑAS PRINCIPALES ---
+        // --- TABS ---
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), // Superficie dinámica
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Row(
@@ -158,29 +154,26 @@ fun ReservaScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TabItemCompact(
-                    icon = Icons.Default.Home,
-                    label = "Estado de\nHabitaciones",
-                    isActive = selectedTab == 0,
-                    onClick = { selectedTab = 0 }
-                )
+                    Icons.Default.Home,
+                    "Estado de\nHabitaciones",
+                    selectedTab == 0
+                ) { selectedTab = 0 }
                 TabItemCompact(
-                    icon = Icons.Default.Assignment,
-                    label = "Reservas/\nVentas Activas",
-                    isActive = selectedTab == 1,
-                    onClick = { selectedTab = 1 }
-                )
+                    Icons.Default.Assignment,
+                    "Reservas/\nVentas Activas",
+                    selectedTab == 1
+                ) { selectedTab = 1 }
                 TabItemCompact(
-                    icon = Icons.Default.History,
-                    label = "Historial de\nClientes",
-                    isActive = selectedTab == 2,
-                    onClick = { selectedTab = 2 }
-                )
+                    Icons.Default.History,
+                    "Historial de\nClientes",
+                    selectedTab == 2
+                ) { selectedTab = 2 }
             }
         }
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // --- CONTENIDO CAMBIANTE ---
+        // --- CONTENIDO ---
         when (selectedTab) {
             0 -> RoomStatusView(navController, uiState.allRooms, uiState.isLoading, uiState.calendarEvents, uiState.calendarNotes, uiState.isSavingNote, viewModel)
             1 -> ReservasListView(navController, uiState.reservations, uiState.isLoading, viewModel, uiState.calendarEvents, uiState.calendarNotes, uiState.isSavingNote)
@@ -242,9 +235,8 @@ fun RoomStatusView(
         val greenIcon = Color(0xFF2E7D32)
         val blueIcon = Color(0xFF1565C0)
         val purpleIcon = Color(0xFF7B1FA2)
-        val greyIcon = if(isDark) Color(0xFFAAAAAA) else Color(0xFF616161)
+        val greyIcon = if (isDark) Color(0xFFAAAAAA) else Color(0xFF616161)
 
-        // Fondos: En modo claro usamos pastel, en oscuro usamos el color base con transparencia baja
         val greenBg = if (isDark) greenIcon.copy(alpha = 0.2f) else Color(0xFFE8F5E9)
         val blueBg = if (isDark) blueIcon.copy(alpha = 0.2f) else Color(0xFFE3F2FD)
         val purpleBg = if (isDark) purpleIcon.copy(alpha = 0.2f) else Color(0xFFF3E5F5)
@@ -257,9 +249,7 @@ fun RoomStatusView(
             SummaryCard(Modifier.weight(1f), Icons.Outlined.CheckCircle, "Disponibles", "$disponibles Hab.", greenBg, greenIcon)
             SummaryCard(Modifier.weight(1f), Icons.Default.Group, "Ocupadas", "$ocupadas Hab.", blueBg, blueIcon)
         }
-
         Spacer(modifier = Modifier.height(12.dp))
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -270,7 +260,6 @@ fun RoomStatusView(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // --- CABECERA ---
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -278,27 +267,19 @@ fun RoomStatusView(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Habitaciones",
+                    "Habitaciones",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Listado actual de ocupación",
+                    "Listado actual de ocupación",
                     fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f),
-                    lineHeight = 14.sp
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
             }
-
-            FloorSelector(
-                selectedFloor = selectedFloor,
-                onFloorSelected = { selectedFloor = it }
-            )
-
+            FloorSelector(selectedFloor) { selectedFloor = it }
             Spacer(modifier = Modifier.width(12.dp))
-
-            // Botón Reporte de Desayunos
             Surface(
                 onClick = { navController.navigate("comanda_screen") },
                 shape = RoundedCornerShape(8.dp),
@@ -311,18 +292,18 @@ fun RoomStatusView(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Default.FreeBreakfast,
-                        contentDescription = null,
+                        Icons.Default.FreeBreakfast,
+                        null,
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Reporte de\nDesayunos",
+                        "Reporte de\nDesayunos",
                         fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
-                        lineHeight = 11.sp,
-                        fontWeight = FontWeight.Bold
+                        lineHeight = 11.sp
                     )
                 }
             }
@@ -330,7 +311,6 @@ fun RoomStatusView(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // --- TABLA DE HABITACIONES ---
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -338,28 +318,56 @@ fun RoomStatusView(
             elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    Text("Habitación", modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Text("Tipo", modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Text("Estado", modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Habitación",
+                        modifier = Modifier.weight(1f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "Tipo",
+                        modifier = Modifier.weight(1f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "Estado",
+                        modifier = Modifier.weight(1f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                 if (filteredRooms.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxWidth().padding(20.dp), contentAlignment = Alignment.Center){
-                        Text("No hay habitaciones en este piso", color = MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "No hay habitaciones en este piso",
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
                     }
                 } else {
                     filteredRooms.forEach { room ->
-                        RoomRowSimple(item = room)
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha=0.5f))
+                        RoomRowSimple(room)
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(
+                                alpha = 0.5f
+                            )
+                        )
                     }
                 }
             }
         }
-
         Spacer(modifier = Modifier.height(20.dp))
 
         // Calendario
@@ -376,7 +384,7 @@ fun RoomStatusView(
 }
 
 // ==========================================================
-// VISTA 2: RESERVAS / VENTAS ACTIVAS
+// VISTA 2: RESERVAS (CON SCROLL HORIZONTAL)
 // ==========================================================
 @Composable
 fun ReservasListView(
@@ -862,34 +870,46 @@ fun AccountStatusView(
             elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
-
-                Text("Buscar", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    "Buscar",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Campo de texto con colores adaptados
                 OutlinedTextField(
                     value = searchText,
                     onValueChange = { searchText = it },
-                    placeholder = { Text("Nombre o DNI", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)) },
+                    placeholder = {
+                        Text(
+                            "Nombre o DNI",
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
                         focusedBorderColor = OrangePrimary,
                         cursorColor = OrangePrimary,
-                        focusedContainerColor = if(isDark) Color(0xFF2D2D2D) else Color.White,
-                        unfocusedContainerColor = if(isDark) Color(0xFF2D2D2D) else Color.White,
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                        focusedContainerColor = if (isDark) Color(0xFF2D2D2D) else Color.White,
+                        unfocusedContainerColor = if (isDark) Color(0xFF2D2D2D) else Color.White
                     ),
                     singleLine = true
                 )
-
                 Spacer(modifier = Modifier.height(24.dp))
-
-                Text("Historial de Clientes", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                Text("Clientes con estado Check-out", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f))
-
+                Text(
+                    "Historial de Clientes",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    "Clientes con estado Check-out",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
                 Spacer(modifier = Modifier.height(20.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Spacer(modifier = Modifier.height(10.dp))
@@ -922,7 +942,6 @@ fun AccountStatusView(
                 }
             }
         }
-
         Spacer(modifier = Modifier.height(24.dp))
 
         DynamicCalendarSection(
@@ -1052,8 +1071,9 @@ fun HistoryClientRow(reservation: Reservation) {
 }
 
 // ==========================================================
-// COMPONENTE CALENDARIO
+// COMPONENTES AUXILIARES (HELPERS)
 // ==========================================================
+
 @Composable
 fun DynamicCalendarSection(
     calendarEvents: List<CalendarEvent> = emptyList(),
@@ -1066,10 +1086,8 @@ fun DynamicCalendarSection(
 ) {
     val currentCalendar = remember { Calendar.getInstance() }
     val isDark = isReservaDarkTheme()
-
     var displayMonth by remember { mutableIntStateOf(currentCalendar.get(Calendar.MONTH)) }
     var displayYear by remember { mutableIntStateOf(currentCalendar.get(Calendar.YEAR)) }
-
     var isMonthView by remember { mutableStateOf(true) }
     var showNoteDialog by remember { mutableStateOf(false) }
     var selectedDateString by remember { mutableStateOf("") }
@@ -1129,111 +1147,38 @@ fun DynamicCalendarSection(
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-
             Text(
-                text = "Calendario de Reservas",
+                "Calendario de Reservas",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Visualiza todas las reservas por canal de reserva",
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f)
-            )
-
             Spacer(modifier = Modifier.height(20.dp))
-
-            // Controles Superiores
-            val borderColor = MaterialTheme.colorScheme.outlineVariant
-            val textColor = MaterialTheme.colorScheme.onSurface
-
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                 OutlinedButton(
-                    onClick = { setToday() },
-                    shape = RoundedCornerShape(4.dp),
-                    border = BorderStroke(1.dp, borderColor),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                    modifier = Modifier.height(32.dp)
-                ) { Text("Hoy", color = textColor.copy(alpha=0.7f), fontSize = 12.sp) }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                OutlinedButton(
                     onClick = { updateDate(-1) },
-                    shape = RoundedCornerShape(4.dp),
-                    border = BorderStroke(1.dp, borderColor),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                    modifier = Modifier.height(32.dp)
-                ) { Text("Anterior", color = textColor, fontSize = 12.sp) }
-
+                    shape = RoundedCornerShape(4.dp)
+                ) { Text("Anterior") }
                 Spacer(modifier = Modifier.width(8.dp))
-
                 OutlinedButton(
                     onClick = { updateDate(1) },
-                    shape = RoundedCornerShape(4.dp),
-                    border = BorderStroke(1.dp, borderColor),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                    modifier = Modifier.height(32.dp)
-                ) { Text("Siguiente", color = textColor, fontSize = 12.sp) }
+                    shape = RoundedCornerShape(4.dp)
+                ) { Text("Siguiente") }
             }
-
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Título Mes/Año
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                 val cal = Calendar.getInstance()
                 cal.set(Calendar.MONTH, displayMonth)
-                cal.set(Calendar.YEAR, displayYear)
-                val monthName = cal.getDisplayName(Calendar.MONTH, Calendar.LONG, Locale("es", "ES")) ?: ""
-
+                val monthName =
+                    cal.getDisplayName(Calendar.MONTH, Calendar.LONG, Locale("es", "ES")) ?: ""
                 Text(
-                    text = "$monthName de $displayYear".replaceFirstChar { it.uppercase() },
+                    "$monthName $displayYear",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Toggle Mes/Agenda
-            val activeBg = if(isDark) Color(0xFF424242) else Color(0xFFE0E0E0)
-            val inactiveBg = if(isDark) Color(0xFF1E1E1E) else Color.White
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                Row(
-                    modifier = Modifier
-                        .border(1.dp, borderColor, RoundedCornerShape(4.dp))
-                        .height(32.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .background(if (isMonthView) activeBg else inactiveBg)
-                            .padding(horizontal = 16.dp)
-                            .fillMaxHeight()
-                            .clickable { isMonthView = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("Mes", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface, fontWeight = if(isMonthView) FontWeight.Bold else FontWeight.Normal)
-                    }
-                    VerticalDivider(color = borderColor)
-                    Box(
-                        modifier = Modifier
-                            .background(if (!isMonthView) activeBg else inactiveBg)
-                            .padding(horizontal = 16.dp)
-                            .fillMaxHeight()
-                            .clickable { isMonthView = false },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("Agenda", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface, fontWeight = if(!isMonthView) FontWeight.Bold else FontWeight.Normal)
-                    }
-                }
-            }
-
             Spacer(modifier = Modifier.height(20.dp))
-
             if (isMonthView) {
                 CalendarGridLegacy(
                     month = displayMonth,
@@ -1509,66 +1454,40 @@ fun CalendarGridLegacy(
         val items = mutableListOf<CalendarDayItem>()
         val cal = Calendar.getInstance()
         val todayCal = Calendar.getInstance()
-
         cal.set(Calendar.YEAR, year)
         cal.set(Calendar.MONTH, month)
         cal.set(Calendar.DAY_OF_MONTH, 1)
-
         val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
         val firstDayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
-
         val offset = firstDayOfWeek - 1
-
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
 
-        val prevCal = cal.clone() as Calendar
-        prevCal.add(Calendar.MONTH, -1)
-        val daysInPrevMonth = prevCal.getActualMaximum(Calendar.DAY_OF_MONTH)
-
-        for (i in 0 until offset) {
-            val dayNum = daysInPrevMonth - offset + 1 + i
-            prevCal.set(Calendar.DAY_OF_MONTH, dayNum)
-            items.add(CalendarDayItem(dayNum.toString(), dateFormat.format(prevCal.time), false, false))
-        }
-
-        val currentMonthCal = cal.clone() as Calendar
+        for (i in 0 until offset) items.add(CalendarDayItem("", "", false, false))
         for (i in 1..daysInMonth) {
-            currentMonthCal.set(Calendar.DAY_OF_MONTH, i)
-            val isToday = (todayCal.get(Calendar.YEAR) == year &&
-                    todayCal.get(Calendar.MONTH) == month &&
-                    todayCal.get(Calendar.DAY_OF_MONTH) == i)
-
-            items.add(CalendarDayItem(i.toString(), dateFormat.format(currentMonthCal.time), true, isToday))
+            val isToday =
+                (todayCal.get(Calendar.YEAR) == year && todayCal.get(Calendar.MONTH) == month && todayCal.get(
+                    Calendar.DAY_OF_MONTH
+                ) == i)
+            val dateStr = String.format("%04d-%02d-%02d", year, month + 1, i)
+            items.add(CalendarDayItem(i.toString(), dateStr, true, isToday))
         }
-
-        val totalCells = 42
-        val remaining = totalCells - items.size
-        val nextCal = cal.clone() as Calendar
-        nextCal.add(Calendar.MONTH, 1)
-
-        for (i in 1..remaining) {
-            nextCal.set(Calendar.DAY_OF_MONTH, i)
-            items.add(CalendarDayItem(String.format("%02d", i), dateFormat.format(nextCal.time), false, false))
-        }
-
         items
     }
 
     Column {
         Row(modifier = Modifier.fillMaxWidth()) {
             daysOfWeek.forEach { day ->
-                Text(text = day, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    day,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
             }
         }
-
         Spacer(modifier = Modifier.height(8.dp))
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-        // Colores de celdas
-        val todayBg = Color(0xFF2C3E50) // Azul oscuro siempre
-        val otherMonthBg = if(isDark) Color(0xFF2A2A2A) else Color(0xFFF2F2F2)
-        val borderColor = if(isDark) Color(0xFF444444) else Color(0xFFF5F5F5)
-
+        HorizontalDivider()
         val weeks = calendarItems.chunked(7)
         weeks.forEach { week ->
             Row(modifier = Modifier.fillMaxWidth().height(64.dp)) {
@@ -1657,109 +1576,141 @@ fun CalendarGridLegacy(
     }
 }
 
-// UI Kits auxiliares
 @Composable
-fun SummaryCard(modifier: Modifier = Modifier, icon: ImageVector, label: String, count: String, bg: Color, tint: Color) {
+fun NoteDialog(date: String, onDismiss: () -> Unit, onSave: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Nota del día: $date") },
+        text = { Text("Aquí puedes escribir notas...") },
+        confirmButton = { Button(onClick = onSave) { Text("Guardar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+    )
+}
+
+@Composable
+fun SummaryCard(
+    modifier: Modifier = Modifier,
+    icon: ImageVector,
+    label: String,
+    count: String,
+    bg: Color,
+    tint: Color
+) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha=0.5f)),
-        elevation = CardDefaults.cardElevation(0.dp)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
-        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.Start) {
-            Box(modifier = Modifier.size(36.dp).clip(RoundedCornerShape(8.dp)).background(bg), contentAlignment = Alignment.Center) {
-                Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
+        Column(modifier = Modifier.padding(16.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(bg),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp))
             }
             Spacer(modifier = Modifier.height(12.dp))
-            Text(text = label, color = MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f), fontSize = 12.sp)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = count, color = MaterialTheme.colorScheme.onSurface, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(
+                label,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+            Text(
+                count,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
 }
 
 @Composable
 fun FloorSelector(selectedFloor: Int, onFloorSelected: (Int) -> Unit) {
-    val isDark = isReservaDarkTheme()
-    val borderColor = MaterialTheme.colorScheme.outlineVariant
-    val containerColor = if(isDark) Color(0xFF2D2D2D) else Color.White
-
     Row(
-        modifier = Modifier.height(40.dp).border(1.dp, borderColor, RoundedCornerShape(8.dp)).clip(RoundedCornerShape(8.dp)).background(containerColor)
+        modifier = Modifier
+            .height(40.dp)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(8.dp))
     ) {
         FloorOption("1ro", selectedFloor == 1) { onFloorSelected(1) }
-        VerticalDivider(modifier = Modifier.width(1.dp).fillMaxHeight(), color = borderColor)
+        VerticalDivider()
         FloorOption("2do", selectedFloor == 2) { onFloorSelected(2) }
-        VerticalDivider(modifier = Modifier.width(1.dp).fillMaxHeight(), color = borderColor)
+        VerticalDivider()
         FloorOption("3ro", selectedFloor == 3) { onFloorSelected(3) }
     }
 }
 
 @Composable
 fun FloorOption(label: String, isSelected: Boolean, onClick: () -> Unit) {
-    val bgColor = if (isSelected) OrangePrimary else Color.Transparent
-    val textColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
-
     Box(
-        modifier = Modifier.fillMaxHeight().width(45.dp).background(bgColor).clickable { onClick() },
-        contentAlignment = Alignment.Center
+        modifier = Modifier
+            .fillMaxHeight()
+            .width(45.dp)
+            .background(if (isSelected) OrangePrimary else Color.Transparent)
+            .clickable(onClick = onClick), contentAlignment = Alignment.Center
     ) {
-        Text(text = label, color = textColor, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, fontSize = 13.sp)
+        Text(
+            label,
+            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+            fontSize = 13.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+        )
     }
 }
 
 @Composable
 fun TabItemCompact(icon: ImageVector, label: String, isActive: Boolean, onClick: () -> Unit) {
-    val contentColor = if (isActive) OrangePrimary else MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f)
-
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onClick() }.padding(horizontal = 4.dp).widthIn(min = 70.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(imageVector = icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(22.dp))
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(text = label, color = contentColor, fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal, fontSize = 11.sp, textAlign = TextAlign.Center, lineHeight = 12.sp)
-        Spacer(modifier = Modifier.height(6.dp))
-        Box(modifier = Modifier.width(40.dp).height(3.dp).background(if (isActive) OrangePrimary else Color.Transparent, RoundedCornerShape(2.dp)))
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .padding(4.dp)
+            .widthIn(min = 70.dp)
+    ) {
+        Icon(
+            icon,
+            null,
+            tint = if (isActive) OrangePrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        )
+        Text(
+            label,
+            fontSize = 11.sp,
+            textAlign = TextAlign.Center,
+            color = if (isActive) OrangePrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        )
+        if (isActive) Box(
+            modifier = Modifier
+                .height(3.dp)
+                .width(40.dp)
+                .background(OrangePrimary, RoundedCornerShape(2.dp))
+        )
     }
 }
 
 @Composable
 fun RoomRowSimple(item: RoomItem) {
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text = item.number, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp, modifier = Modifier.weight(1f))
-        Text(text = item.type, color = MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f), fontSize = 14.sp, modifier = Modifier.weight(1f))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(item.number, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+        Text(item.type, modifier = Modifier.weight(1f))
         Box(modifier = Modifier.weight(1f)) {
-            Box(modifier = Modifier.clip(RoundedCornerShape(50)).background(item.statusColor.copy(alpha = 0.1f)).padding(horizontal = 12.dp, vertical = 6.dp)) {
-                Text(text = item.status, color = item.statusColor, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-            }
+            Text(
+                item.status,
+                color = item.statusColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp
+            )
         }
     }
 }
 
-@Composable
-fun ReservaRow(item: ReservaItem) {
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(modifier = Modifier.weight(0.7f)) {
-            Text(text = item.id.split("-")[0], color = MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f), fontSize = 11.sp)
-            Text(text = item.id.split("-")[1], color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        }
-        Text(text = item.nombre, color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1.3f), lineHeight = 16.sp)
-        Column(modifier = Modifier.weight(0.7f)) {
-            Text(text = item.tipoHab, color = MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f), fontSize = 11.sp)
-            Text(text = item.habitacion, color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp)
-        }
-        Text(text = item.precio, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.weight(0.9f))
-        Row(modifier = Modifier.weight(1.2f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(item.estadoColor.copy(alpha = 0.15f)).padding(horizontal = 6.dp, vertical = 4.dp)) {
-                Text(text = item.estado, color = item.estadoColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            }
-            Icon(imageVector = Icons.Default.Edit, contentDescription = "Editar", tint = OrangePrimary, modifier = Modifier.size(16.dp).clickable { })
-        }
-    }
-}
-
-// Función auxiliar privada para evitar conflicto de nombres con otros archivos
 @Composable
 private fun isReservaDarkTheme(): Boolean {
     return MaterialTheme.colorScheme.surface.luminance() < 0.5f
