@@ -1,22 +1,9 @@
-package com.keyli.plazatrujillo.data.model // O tu paquete correspondiente
+package com.keyli.plazatrujillo.data.model
 
-import com.google.gson.annotations.SerializedName
+// Las clases Reservation, ReservationResponse, Companion y CompanionItem 
+// están definidas en ApiModels.kt para evitar duplicación.
+// Este archivo se mantiene por compatibilidad con imports existentes.
 
-// Esta clase representa la respuesta completa: { "reservations": [ ... ] }
-data class ReservationResponse(
-    @SerializedName("reservations") val reservations: List<Reservation>
-)
-
-// Esta clase representa una sola reserva
-data class Reservation(
-    val id: Int,
-    @SerializedName("reservationId") val reservationId: String, // Coincide con tu serializer
-    val guest: String,
-    val room: String?,
-    val checkIn: String,
-    val checkOut: String,
-    val total: String,
-    val status: String,
-    val paid: Boolean
-    // Puedes agregar más campos si los necesitas, pero estos son los principales
-)
+// Type alias para compatibilidad (si es necesario)
+typealias ReservationResponse = ListReservationsResponse
+typealias Companion = CompanionItem

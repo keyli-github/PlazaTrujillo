@@ -1417,6 +1417,11 @@ fun CalendarGridLegacy(
 ) {
     val isDark = isReservaDarkTheme()
     val daysOfWeek = listOf("Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb")
+    
+    // Colores del calendario
+    val borderColor = if (isDark) Color.Gray.copy(alpha = 0.3f) else Color.LightGray
+    val todayBg = if (isDark) Color(0xFF1E3A5F) else Color(0xFFE3F2FD)
+    val otherMonthBg = if (isDark) Color(0xFF2D2D2D) else Color(0xFFF5F5F5)
 
     // Agrupar eventos por fecha - cada evento abarca desde start hasta end
     val eventsByDate = remember(events) {
