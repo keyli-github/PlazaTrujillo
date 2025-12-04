@@ -113,7 +113,11 @@ fun DashboardScreen(
             }
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
             // 1. CONTENIDO PRINCIPAL
             if (uiState.isLoading && uiState.metrics == null) {
                 // Mostrar indicador de carga inicial
@@ -126,7 +130,6 @@ fun DashboardScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(backgroundColor)
-                        .padding()
                         .padding(16.dp)
                         .verticalScroll(scrollState)
                 ) {
@@ -1154,6 +1157,7 @@ fun LegendItem(text: String, color: Color) {
 }
 
 /* --- PaymentMethodChart: anillo (donut) con porcentajes y leyenda con % --- */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PaymentMethodChart(
     cardBg: Color,
