@@ -1,16 +1,18 @@
 package com.keyli.plazatrujillo.ui.screens
 
+import android.app.DatePickerDialog
 import android.app.DownloadManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
-import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
 import android.os.Build
 import android.os.Environment
+import android.provider.MediaStore
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
@@ -47,8 +49,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import com.keyli.plazatrujillo.data.model.Reservation
 import com.keyli.plazatrujillo.ui.theme.*
+import com.keyli.plazatrujillo.ui.viewmodel.ReservationViewModel
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -56,6 +62,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.*
 
 // --- DATA CLASS ---
 data class BreakfastRowData(
@@ -74,18 +82,116 @@ enum class ReportState {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ComandaScreen(navController: NavHostController) {
+fun ComandaScreen(
+    navController: NavHostController,
+    reservationViewModel: ReservationViewModel = viewModel()
+) {
     val scrollState = rememberScrollState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     // Estado para la animación
     var reportState by remember { mutableStateOf(ReportState.IDLE) }
+    
+    // Obtener reservaciones del ViewModel
+    val uiState by reservationViewModel.uiState.collectAsState()
+    val reservations = uiState.reservations
+    
+    // Cargar reservaciones al inicio
+    LaunchedEffect(Unit) {
+        reservationViewModel.loadReservations()
+    }
 
-    // Datos del formulario
-    var empleado by remember { mutableStateOf("Marco Castro") }
-    var fecha by remember { mutableStateOf("02/12/2025") }
-    val breakfastRows = remember { mutableStateListOf(BreakfastRowData(System.currentTimeMillis())) }
+    // Obtener empleado actual de Firebase
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    val empleadoAuto = currentUser?.displayName 
+        ?: currentUser?.email?.substringBefore("@") 
+        ?: "Empleado"
+
+    // Datos del formulario - fecha actual por defecto
+    var empleado by remember { mutableStateOf(empleadoAuto) }
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    val displayDateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    var fechaISO by remember { mutableStateOf(dateFormat.format(Date())) }
+    var fechaDisplay by remember { mutableStateOf(displayDateFormat.format(Date())) }
+    
+    // Función para construir filas basadas en reservas activas para una fecha
+    fun buildBreakfastRowsForDate(fecha: String): List<BreakfastRowData> {
+        val list = mutableListOf<BreakfastRowData>()
+        
+        for (reservation in reservations) {
+            // Ignorar reservas canceladas
+            if (reservation.status?.lowercase() == "cancelada") continue
+            
+            val checkIn = reservation.checkIn ?: continue
+            val checkOut = reservation.checkOut ?: continue
+            
+            // Verificar si la fecha está dentro del rango de la reserva
+            if (fecha >= checkIn && fecha < checkOut) {
+                val guestName = reservation.guest ?: ""
+                val roomCode = reservation.room ?: ""
+                
+                if (roomCode.isNotEmpty()) {
+                    list.add(
+                        BreakfastRowData(
+                            id = System.currentTimeMillis() + list.size,
+                            habitacion = roomCode,
+                            nombres = guestName,
+                            americano = "0",
+                            continental = "0",
+                            adicional = "0"
+                        )
+                    )
+                } else {
+                    list.add(
+                        BreakfastRowData(
+                            id = System.currentTimeMillis() + list.size,
+                            habitacion = "",
+                            nombres = guestName,
+                            americano = "0",
+                            continental = "0",
+                            adicional = "0"
+                        )
+                    )
+                }
+            }
+        }
+        
+        // Si no hay reservas para esa fecha, agregar una fila vacía
+        return list.ifEmpty { 
+            listOf(BreakfastRowData(System.currentTimeMillis())) 
+        }
+    }
+    
+    // Inicializar filas basadas en reservas activas para hoy
+    val breakfastRows = remember { mutableStateListOf<BreakfastRowData>() }
+    
+    // Actualizar filas cuando cambien las reservaciones o la fecha
+    LaunchedEffect(reservations, fechaISO) {
+        if (reservations.isNotEmpty()) {
+            breakfastRows.clear()
+            breakfastRows.addAll(buildBreakfastRowsForDate(fechaISO))
+        } else if (breakfastRows.isEmpty()) {
+            breakfastRows.add(BreakfastRowData(System.currentTimeMillis()))
+        }
+    }
+    
+    // DatePicker Dialog
+    val calendar = Calendar.getInstance()
+    val datePickerDialog = DatePickerDialog(
+        context,
+        { _, year, month, dayOfMonth ->
+            calendar.set(year, month, dayOfMonth)
+            fechaISO = dateFormat.format(calendar.time)
+            fechaDisplay = displayDateFormat.format(calendar.time)
+            // Recargar filas para la nueva fecha
+            breakfastRows.clear()
+            breakfastRows.addAll(buildBreakfastRowsForDate(fechaISO))
+        },
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH),
+        calendar.get(Calendar.DAY_OF_MONTH)
+    )
 
     // --- UI PRINCIPAL ---
     Box(modifier = Modifier.fillMaxSize()) {
@@ -130,7 +236,7 @@ fun ComandaScreen(navController: NavHostController) {
 
                                 // 1. Generar PDF
                                 val generatedFile = withContext(Dispatchers.IO) {
-                                    generateAndSavePdf(context, empleado, fecha, breakfastRows)
+                                    generateAndSavePdf(context, empleado, fechaDisplay, breakfastRows)
                                 }
 
                                 if (generatedFile != null) {
@@ -170,11 +276,37 @@ fun ComandaScreen(navController: NavHostController) {
                 // --- CAMPOS ---
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     SoftInputData(label = "Empleado encargado", value = empleado, onValueChange = { empleado = it }, icon = Icons.Default.Person)
-                    SoftInputData(label = "Fecha del reporte", value = fecha, onValueChange = { fecha = it }, icon = Icons.Default.CalendarToday)
+                    // Campo de fecha clickeable que abre DatePicker
+                    SoftInputDataClickable(
+                        label = "Fecha del reporte", 
+                        value = fechaDisplay, 
+                        onClick = { datePickerDialog.show() }, 
+                        icon = Icons.Default.CalendarToday
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // --- TOTALES ---
+                val totalAme = breakfastRows.sumOf { it.americano.toIntOrNull() ?: 0 }
+                val totalCon = breakfastRows.sumOf { it.continental.toIntOrNull() ?: 0 }
+                val totalAdi = breakfastRows.sumOf { it.adicional.toIntOrNull() ?: 0 }
+                
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(OrangePrimary.copy(alpha = 0.1f))
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    TotalItem("Americano", totalAme)
+                    TotalItem("Continental", totalCon)
+                    TotalItem("Adicional", totalAdi)
+                }
+                
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // --- TABLA HEADER ---
@@ -335,14 +467,44 @@ private fun generateAndSavePdf(
     pdfDocument.finishPage(page)
 
     val fileName = "Reporte_Desayuno_${System.currentTimeMillis()}.pdf"
-    val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-    val file = File(downloadsDir, fileName)
-
+    
     return try {
-        pdfDocument.writeTo(FileOutputStream(file))
-        pdfDocument.close()
-        file
-    } catch (e: IOException) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Android 10+ usa MediaStore
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            }
+            
+            val uri = context.contentResolver.insert(
+                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                contentValues
+            )
+            
+            if (uri != null) {
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    pdfDocument.writeTo(outputStream)
+                }
+                pdfDocument.close()
+                
+                // Crear un archivo temporal para la notificación
+                val tempFile = File(context.cacheDir, fileName)
+                tempFile.createNewFile()
+                tempFile
+            } else {
+                pdfDocument.close()
+                null
+            }
+        } else {
+            // Android 9 y menor usa acceso directo
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val file = File(downloadsDir, fileName)
+            pdfDocument.writeTo(FileOutputStream(file))
+            pdfDocument.close()
+            file
+        }
+    } catch (e: Exception) {
         e.printStackTrace()
         pdfDocument.close()
         null
@@ -350,11 +512,11 @@ private fun generateAndSavePdf(
 }
 
 private fun showDownloadNotification(context: Context, file: File) {
-    // ... (Tu función de notificación se mantiene sin cambios)
     val channelId = "downloads_high_priority"
     val notificationId = (System.currentTimeMillis() % 10000).toInt()
     val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
+    // Intent para abrir la carpeta de descargas
     val intent = Intent(DownloadManager.ACTION_VIEW_DOWNLOADS).apply {
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
     }
@@ -378,15 +540,20 @@ private fun showDownloadNotification(context: Context, file: File) {
 
     val notification = NotificationCompat.Builder(context, channelId)
         .setSmallIcon(android.R.drawable.stat_sys_download_done)
-        .setContentTitle("Reporte PDF Guardado")
-        .setContentText("Toca para ver tus descargas: ${file.name}")
-        .setPriority(NotificationCompat.PRIORITY_MAX)
+        .setContentTitle("✅ PDF Guardado en Descargas")
+        .setContentText("Toca para abrir la carpeta de Descargas")
+        .setStyle(NotificationCompat.BigTextStyle()
+            .bigText("El reporte de desayunos se guardó correctamente en la carpeta Descargas de tu dispositivo."))
+        .setPriority(NotificationCompat.PRIORITY_HIGH)
         .setDefaults(NotificationCompat.DEFAULT_ALL)
         .setContentIntent(pendingIntent)
         .setAutoCancel(true)
         .build()
 
     notificationManager.notify(notificationId, notification)
+    
+    // También mostrar un Toast
+    Toast.makeText(context, "PDF guardado en Descargas", Toast.LENGTH_LONG).show()
 }
 
 // ------------------------------------------------------------------------
@@ -436,6 +603,65 @@ private fun SoftInputData(label: String, value: String, onValueChange: (String) 
                 singleLine = true
             )
         }
+    }
+}
+
+@Composable
+private fun SoftInputDataClickable(label: String, value: String, onClick: () -> Unit, icon: ImageVector) {
+    val isDark = isComandaDarkTheme()
+    val inputBgColor = if (isDark) Color(0xFF333333) else Color(0xFFF5F6F9)
+
+    Column {
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(inputBgColor)
+                .clickable { onClick() }
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(22.dp))
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = value,
+                fontSize = 15.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = Icons.Default.ArrowDropDown,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun TotalItem(label: String, value: Int) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = value.toString(),
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = OrangePrimary
+        )
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        )
     }
 }
 

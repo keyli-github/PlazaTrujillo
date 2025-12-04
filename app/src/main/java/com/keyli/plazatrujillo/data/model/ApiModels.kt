@@ -507,11 +507,12 @@ data class CajaClient(
 
 data class PaidClientsResponse(
     @SerializedName("clients") val clients: List<PaidClient>? = null,
-    @SerializedName("total") val total: Int? = null
+    @SerializedName("total") val total: Double? = null
 )
 
 data class PaidClient(
     @SerializedName("guest") val guest: String? = null,
+    @SerializedName("total") val total: Double? = null,
     @SerializedName("reservationCode") val reservationCode: String? = null
 )
 

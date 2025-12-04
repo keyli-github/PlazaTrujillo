@@ -514,9 +514,13 @@ fun RegistrarCobroDialog(
                             selectedOption = selectedCliente
                         ) { selected ->
                             selectedCliente = selected
-                            // Buscar código de reserva
+                            // Buscar cliente y autocompletar monto
                             val client = paidClients.find { it.guest == selected }
                             selectedReservationCode = client?.reservationCode
+                            // Autocompletar el monto con el total del cliente
+                            if (client != null && (client.total ?: 0.0) > 0) {
+                                montoInput = client.total.toString()
+                            }
                         }
                     }
                     Column(modifier = Modifier.weight(1f)) {
