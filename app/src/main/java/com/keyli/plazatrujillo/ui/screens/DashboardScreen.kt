@@ -392,22 +392,64 @@ fun TodayCheckIns(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
-            Text("Check-in de Hoy", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = text)
-            Text("Huéspedes programados para llegar hoy", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 20.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("Check-in de Hoy", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = text)
+                    Text(
+                        "${checkins?.size ?: 0} llegadas programadas", 
+                        color = Color.Gray, 
+                        fontSize = 12.sp, 
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+                // Ícono de entrada
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(
+                            color = Color(0xFF4CAF50).copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Login,
+                        contentDescription = null,
+                        tint = Color(0xFF4CAF50),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(20.dp))
 
             if (checkins.isNullOrEmpty()) {
-                CheckInItem("14:00", "Juan Pérez", "Hab. 101", text)
-                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 12.dp))
-                CheckInItem("15:30", "María López", "Hab. 205", text)
+                // Mensaje cuando no hay check-ins
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "No hay check-ins programados para hoy",
+                        color = Color.Gray,
+                        fontSize = 14.sp
+                    )
+                }
             } else {
                 checkins.forEachIndexed { index, checkin ->
                     if (index > 0) {
                         HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 12.dp))
                     }
                     CheckInItem(
-                        checkin.time ?: "",
-                        checkin.name ?: "",
-                        checkin.room ?: "",
+                        checkin.time ?: "--:--",
+                        checkin.name ?: "Sin nombre",
+                        "Hab. ${checkin.room ?: "--"}",
                         text
                     )
                 }
@@ -456,22 +498,64 @@ fun TodayCheckOuts(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
-            Text("Check-out de Hoy", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = text)
-            Text("Huéspedes programados para salir hoy", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 20.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("Check-out de Hoy", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = text)
+                    Text(
+                        "${checkouts?.size ?: 0} salidas programadas", 
+                        color = Color.Gray, 
+                        fontSize = 12.sp, 
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+                // Ícono de salida
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(
+                            color = Color(0xFFF44336).copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Logout,
+                        contentDescription = null,
+                        tint = Color(0xFFF44336),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(20.dp))
 
             if (checkouts.isNullOrEmpty()) {
-                CheckOutItem("11:00", "Carlos Ruiz", "Hab. 302", text)
-                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 12.dp))
-                CheckOutItem("12:00", "Elena Gomez", "Hab. 104", text)
+                // Mensaje cuando no hay check-outs
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "No hay check-outs programados para hoy",
+                        color = Color.Gray,
+                        fontSize = 14.sp
+                    )
+                }
             } else {
                 checkouts.forEachIndexed { index, checkout ->
                     if (index > 0) {
                         HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 12.dp))
                     }
                     CheckOutItem(
-                        checkout.time ?: "",
-                        checkout.name ?: "",
-                        checkout.room ?: "",
+                        checkout.time ?: "--:--",
+                        checkout.name ?: "Sin nombre",
+                        "Hab. ${checkout.room ?: "--"}",
                         text
                     )
                 }
