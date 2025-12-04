@@ -167,7 +167,7 @@ fun ChatBotScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
-                    top = innerPadding.calculateTopPadding(),
+                    // ❌ QUITADO EL TOP QUE GENERABA EL ESPACIO VACÍO
                     bottom = innerPadding.calculateBottomPadding()
                 )
         ) {
@@ -206,7 +206,6 @@ fun ChatBotScreen(
                             )
                         }
                     }
-                    // Botón para nueva sesión
                     IconButton(
                         onClick = { chatbotViewModel.endSession() }
                     ) {
@@ -238,6 +237,7 @@ fun ChatBotScreen(
             }
         }
     }
+
 }
 
 // --- COMPONENTES VISUALES ---

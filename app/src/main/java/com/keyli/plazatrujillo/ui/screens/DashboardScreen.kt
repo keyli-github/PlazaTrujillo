@@ -116,7 +116,7 @@ fun DashboardScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                //.padding(paddingValues)
         ) {
             // 1. CONTENIDO PRINCIPAL
             if (uiState.isLoading && uiState.metrics == null) {
