@@ -136,10 +136,10 @@ class ReservationViewModel(
         }
     }
     
-    fun loadAvailableRooms(checkIn: String, checkOut: String) {
+    fun loadAvailableRooms(checkIn: String, checkOut: String, excludeReservation: String? = null) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
-            val result = repository.getAvailableRooms(checkIn, checkOut)
+            val result = repository.getAvailableRooms(checkIn, checkOut, excludeReservation)
             
             result.fold(
                 onSuccess = { rooms ->
@@ -211,6 +211,10 @@ class ReservationViewModel(
                         isLoading = false,
                         successMessage = "Reserva actualizada exitosamente"
                     )
+                    // Recargar todas las reservaciones para actualizar estados de habitaciones
+                    loadReservations()
+                    // Recargar todas las habitaciones para actualizar sus estados
+                    loadAllRooms()
                 },
                 onFailure = { exception ->
                     _uiState.value = _uiState.value.copy(
@@ -229,6 +233,8 @@ class ReservationViewModel(
             
             result.fold(
                 onSuccess = {
+                    // Recargar todas las reservas para actualizar disponibilidad
+                    loadReservations()
                     _uiState.value = _uiState.value.copy(
                         reservations = _uiState.value.reservations.filter { it.reservationId != reservationId },
                         isLoading = false,

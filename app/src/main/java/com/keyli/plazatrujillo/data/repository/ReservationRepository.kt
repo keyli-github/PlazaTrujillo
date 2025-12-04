@@ -74,9 +74,13 @@ class ReservationRepository {
         }
     }
     
-    suspend fun getAvailableRooms(checkIn: String, checkOut: String): Result<List<Room>> = withContext(Dispatchers.IO) {
+    suspend fun getAvailableRooms(
+        checkIn: String, 
+        checkOut: String, 
+        excludeReservation: String? = null
+    ): Result<List<Room>> = withContext(Dispatchers.IO) {
         try {
-            val response = apiService.getAvailableRooms(checkIn, checkOut)
+            val response = apiService.getAvailableRooms(checkIn, checkOut, excludeReservation)
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!.rooms ?: emptyList())
             } else {

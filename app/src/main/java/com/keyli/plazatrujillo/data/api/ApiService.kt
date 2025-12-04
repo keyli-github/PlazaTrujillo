@@ -96,7 +96,8 @@ interface ApiService {
     @GET("/api/reservations/rooms/available/")
     suspend fun getAvailableRooms(
         @Query("check_in") checkIn: String,
-        @Query("check_out") checkOut: String
+        @Query("check_out") checkOut: String,
+        @Query("exclude_reservation") excludeReservation: String? = null
     ): Response<AvailableRoomsResponse>
     
     @GET("/api/reservations/rooms/all/")

@@ -2098,6 +2098,14 @@ fun EditReservationDialog(
     
     // Dropdown states
     var expandedRoomType by remember { mutableStateOf(false) }
+    var expandedRoom by remember { mutableStateOf(false) }
+    
+    // Cargar habitaciones disponibles excluyendo la reserva actual
+    LaunchedEffect(checkIn, checkOut) {
+        if (checkIn.isNotBlank() && checkOut.isNotBlank()) {
+            viewModel.loadAvailableRooms(checkIn, checkOut, reservation.reservationId)
+        }
+    }
     var expandedChannel by remember { mutableStateOf(false) }
     
     val roomTypes = listOf("Simple", "Doble", "Triple", "Matrimonial")
@@ -2154,17 +2162,45 @@ fun EditReservationDialog(
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Habitación", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
                         Spacer(modifier = Modifier.height(4.dp))
-                        OutlinedTextField(
-                            value = room,
-                            onValueChange = { room = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = OrangePrimary,
-                                cursorColor = OrangePrimary
-                            ),
-                            singleLine = true
-                        )
+                        ExposedDropdownMenuBox(
+                            expanded = expandedRoom,
+                            onExpandedChange = { expandedRoom = !expandedRoom }
+                        ) {
+                            OutlinedTextField(
+                                value = room,
+                                onValueChange = {},
+                                readOnly = true,
+                                modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                shape = RoundedCornerShape(8.dp),
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedRoom) },
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary),
+                                singleLine = true
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expandedRoom,
+                                onDismissRequest = { expandedRoom = false }
+                            ) {
+                                uiState.availableRooms.forEach { availableRoom ->
+                                    DropdownMenuItem(
+                                        text = { Text("${availableRoom.code} - ${availableRoom.type ?: ""}") },
+                                        onClick = {
+                                            room = availableRoom.code ?: ""
+                                            // Actualizar también el tipo si está disponible
+                                            if (!availableRoom.type.isNullOrEmpty()) {
+                                                roomType = when (availableRoom.type) {
+                                                    "S", "Simple" -> "Simple"
+                                                    "D", "Doble" -> "Doble"
+                                                    "T", "Triple" -> "Triple"
+                                                    "M", "Matrimonial" -> "Matrimonial"
+                                                    else -> availableRoom.type ?: roomType
+                                                }
+                                            }
+                                            expandedRoom = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Tipo", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
