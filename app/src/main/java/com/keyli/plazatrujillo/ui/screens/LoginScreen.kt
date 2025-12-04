@@ -98,7 +98,6 @@ fun LoginScreen(
 
 @Composable
 fun ElegantSplashScreen() {
-    // 1. Animación de "Latido" (Pulse) para el fondo del logo
     val infiniteTransition = rememberInfiniteTransition(label = "Pulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -119,7 +118,6 @@ fun ElegantSplashScreen() {
         label = "PulseAlpha"
     )
 
-    // 2. Animación de los puntos suspensivos del texto
     var dots by remember { mutableStateOf("") }
     LaunchedEffect(Unit) {
         while (true) {
@@ -134,7 +132,6 @@ fun ElegantSplashScreen() {
         }
     }
 
-    // 3. Animación de entrada del Logo (Rebote/Pop)
     val logoScale = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         logoScale.animateTo(
@@ -149,7 +146,6 @@ fun ElegantSplashScreen() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            // Fondo con un degradado muy sutil vertical (Blanco -> Gris muy claro)
             .background(
                 Brush.verticalGradient(
                     colors = listOf(Color.White, Color(0xFFF5F5F5))
@@ -161,10 +157,7 @@ fun ElegantSplashScreen() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-
-            // --- CONTENEDOR DEL LOGO ---
             Box(contentAlignment = Alignment.Center) {
-                // Círculo de "Pulso" detrás
                 Box(
                     modifier = Modifier
                         .size(160.dp)
@@ -173,18 +166,17 @@ fun ElegantSplashScreen() {
                         .background(OrangePrimary.copy(alpha = 0.3f), CircleShape)
                 )
 
-                // Logo principal dentro de un círculo elevado
                 Surface(
                     modifier = Modifier
                         .size(160.dp)
-                        .scale(logoScale.value), // Aplica el rebote
+                        .scale(logoScale.value),
                     shape = CircleShape,
                     color = Color.White,
-                    shadowElevation = 10.dp, // Sombra elegante
-                    border = BorderStroke(1.dp, Color(0xFFEEEEEE)) // Borde sutil
+                    shadowElevation = 10.dp,
+                    border = BorderStroke(1.dp, Color(0xFFEEEEEE))
                 ) {
                     Box(
-                        modifier = Modifier.padding(25.dp), // Espacio interno del logo
+                        modifier = Modifier.padding(25.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Image(
@@ -199,8 +191,6 @@ fun ElegantSplashScreen() {
 
             Spacer(Modifier.height(40.dp))
 
-            // --- INDICADOR Y TEXTO ---
-            // Barra de carga pequeña y minimalista
             LinearProgressIndicator(
                 modifier = Modifier
                     .width(120.dp)
@@ -213,7 +203,7 @@ fun ElegantSplashScreen() {
             Spacer(Modifier.height(16.dp))
 
             Text(
-                text = "Cargando sistema$dots", // Texto fijo + puntos animados
+                text = "Cargando sistema$dots",
                 color = TextGray,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -221,7 +211,6 @@ fun ElegantSplashScreen() {
             )
         }
 
-        // Copyright o versión abajo
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -248,12 +237,10 @@ fun LoginFormContent(
     onLoginSuccess: () -> Unit,
     onNavigateToRecovery: () -> Unit
 ) {
-    // --- Context y Activity para biometría ---
     val context = LocalContext.current
     val activity = context.findActivity()
     val biometricHelper = remember { BiometricHelper(context) }
 
-    // --- Estados ---
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -261,18 +248,15 @@ fun LoginFormContent(
     var isLoggingIn by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isNetworkError by remember { mutableStateOf(false) }
-    
-    // Estados para biometría - recalculamos cada vez
+
     var canUseBiometric by remember { mutableStateOf(false) }
     var showBiometricButton by remember { mutableStateOf(false) }
-    
-    // Verificar biometría al iniciar
+
     LaunchedEffect(Unit) {
         canUseBiometric = biometricHelper.canAuthenticate() == BiometricStatus.AVAILABLE
         val hasCredentials = biometricHelper.hasStoredCredentials()
         showBiometricButton = canUseBiometric && hasCredentials
-        
-        // Cargar email guardado si existe
+
         biometricHelper.getSavedEmail()?.let { savedEmail ->
             email = savedEmail
         }
@@ -282,14 +266,13 @@ fun LoginFormContent(
     val scope = rememberCoroutineScope()
     val repository = remember { AuthRepository() }
 
-    // Función para autenticar con biometría
     fun authenticateWithBiometric() {
         val fragmentActivity = activity as? FragmentActivity
         if (fragmentActivity == null) {
             errorMessage = "Error: Dispositivo no compatible"
             return
         }
-        
+
         biometricHelper.showBiometricPrompt(
             activity = fragmentActivity,
             title = "Hotel Plaza Trujillo",
@@ -306,7 +289,7 @@ fun LoginFormContent(
                             onLoginSuccess()
                         } else {
                             isLoggingIn = false
-                            errorMessage = "Las credenciales guardadas no son válidas. Inicia sesión manualmente."
+                            errorMessage = "Credenciales inválidas. Inicia manualmente."
                             biometricHelper.clearCredentials()
                             showBiometricButton = false
                         }
@@ -315,16 +298,11 @@ fun LoginFormContent(
                     errorMessage = "No hay credenciales guardadas"
                 }
             },
-            onError = { error ->
-                errorMessage = error
-            },
-            onFailed = {
-                errorMessage = "Huella no reconocida"
-            }
+            onError = { error -> errorMessage = error },
+            onFailed = { errorMessage = "Huella no reconocida" }
         )
     }
 
-    // Función para hacer login normal
     fun performLogin() {
         keyboardController?.hide()
         if (email.isBlank() || password.isBlank()) {
@@ -338,7 +316,6 @@ fun LoginFormContent(
         scope.launch {
             val result = repository.loginWithFirebase(email.trim(), password.trim())
             if (result.isSuccess) {
-                // Guardar credenciales si "Siempre conectado" está activado
                 if (rememberMe && canUseBiometric) {
                     biometricHelper.saveCredentials(email.trim(), password.trim())
                 }
@@ -347,8 +324,8 @@ fun LoginFormContent(
                 isLoggingIn = false
                 val error = result.exceptionOrNull()
                 errorMessage = error?.message ?: "Error desconocido"
-                if (errorMessage!!.contains("red", ignoreCase = true) || 
-                    errorMessage!!.contains("internet", ignoreCase = true) || 
+                if (errorMessage!!.contains("red", ignoreCase = true) ||
+                    errorMessage!!.contains("internet", ignoreCase = true) ||
                     errorMessage!!.contains("network", ignoreCase = true)) {
                     isNetworkError = true
                 }
@@ -356,7 +333,6 @@ fun LoginFormContent(
         }
     }
 
-    // --- Animación de Entrada ---
     var isFormVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { isFormVisible = true }
 
@@ -370,7 +346,6 @@ fun LoginFormContent(
     )
 
     Box(modifier = Modifier.fillMaxSize().background(LightBackground)) {
-        // Fondo naranja superior
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -384,7 +359,6 @@ fun LoginFormContent(
         ) {
             Spacer(Modifier.height(40.dp))
 
-            // Logo pequeño superior
             AnimatedVisibility(visible = isFormVisible, enter = scaleIn(tween(500, delayMillis = 200)) + fadeIn()) {
                 Surface(
                     modifier = Modifier.size(100.dp),
@@ -410,7 +384,6 @@ fun LoginFormContent(
 
             Spacer(Modifier.height(24.dp))
 
-            // Card Formulario
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -428,7 +401,6 @@ fun LoginFormContent(
                     Text("Bienvenido", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                     Text("Panel Administrativo", color = TextGray, fontSize = 14.sp, modifier = Modifier.padding(bottom = 24.dp))
 
-                    // Llamada a la función helper corregida
                     LoginTextFieldLabel("Correo Electrónico")
                     OutlinedTextField(
                         value = email,
@@ -448,7 +420,6 @@ fun LoginFormContent(
 
                     Spacer(Modifier.height(16.dp))
 
-                    // Llamada a la función helper corregida
                     LoginTextFieldLabel("Contraseña")
                     OutlinedTextField(
                         value = password,
@@ -471,42 +442,53 @@ fun LoginFormContent(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(20.dp))
 
+                    // --- INICIO DE LA MODIFICACIÓN ---
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Lado Izquierdo: Casillero + Texto "Habilita huella digital"
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f, fill = false)
+                        ) {
                             Checkbox(
                                 checked = rememberMe,
                                 onCheckedChange = { rememberMe = it },
-                                colors = CheckboxDefaults.colors(checkedColor = OrangePrimary)
+                                colors = CheckboxDefaults.colors(checkedColor = OrangePrimary),
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .padding(end = 4.dp)
                             )
-                            Column {
-                                Text("Siempre conectado", fontSize = 12.sp, color = TextGray)
-                                if (canUseBiometric) {
-                                    Text(
-                                        "Habilita huella digital",
-                                        fontSize = 10.sp,
-                                        color = OrangePrimary.copy(alpha = 0.7f)
-                                    )
-                                }
-                            }
+                            Spacer(Modifier.width(8.dp))
+
+                            // AQUI SE ELIMINÓ "Siempre conectado" Y SE DEJÓ SOLO ESTE:
+                            Text(
+                                "Habilita huella digital",
+                                fontSize = 12.sp,
+                                color = TextGray
+                            )
                         }
+
+                        // Lado Derecho: Link Olvidaste Contraseña
                         Text(
-                            text = "¿Olvidaste tu contraseña?",
+                            text = "¿Olvidaste tu\ncontraseña?",
                             color = OrangePrimary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.clickable { onNavigateToRecovery() }
+                            textAlign = TextAlign.End,
+                            modifier = Modifier
+                                .padding(start = 12.dp)
+                                .clickable { onNavigateToRecovery() }
                         )
                     }
+                    // --- FIN DE LA MODIFICACIÓN ---
 
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(24.dp))
 
-                    // Botón de Login
                     Button(
                         onClick = { performLogin() },
                         enabled = !isLoggingIn,
@@ -523,7 +505,6 @@ fun LoginFormContent(
                         }
                     }
 
-                    // Botón de Huella Digital (solo si hay credenciales guardadas)
                     AnimatedVisibility(
                         visible = showBiometricButton && !isLoggingIn,
                         enter = fadeIn() + expandVertically(),
@@ -534,30 +515,19 @@ fun LoginFormContent(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Spacer(Modifier.height(16.dp))
-                            
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                HorizontalDivider(
-                                    modifier = Modifier.weight(1f),
-                                    color = Color.LightGray.copy(alpha = 0.5f)
-                                )
-                                Text(
-                                    "  o usa tu huella  ",
-                                    color = TextGray,
-                                    fontSize = 12.sp
-                                )
-                                HorizontalDivider(
-                                    modifier = Modifier.weight(1f),
-                                    color = Color.LightGray.copy(alpha = 0.5f)
-                                )
+                                HorizontalDivider(modifier = Modifier.weight(1f), color = Color.LightGray.copy(alpha = 0.5f))
+                                Text("  o usa tu huella  ", color = TextGray, fontSize = 12.sp)
+                                HorizontalDivider(modifier = Modifier.weight(1f), color = Color.LightGray.copy(alpha = 0.5f))
                             }
-                            
+
                             Spacer(Modifier.height(16.dp))
-                            
-                            // Botón circular de huella
+
                             Surface(
                                 modifier = Modifier
                                     .size(70.dp)
@@ -575,19 +545,12 @@ fun LoginFormContent(
                                     )
                                 }
                             }
-                            
+
                             Spacer(Modifier.height(8.dp))
-                            
-                            Text(
-                                "Toca para usar huella",
-                                color = TextGray,
-                                fontSize = 12.sp,
-                                textAlign = TextAlign.Center
-                            )
+                            Text("Toca para usar huella", color = TextGray, fontSize = 12.sp, textAlign = TextAlign.Center)
                         }
                     }
 
-                    // --- INICIO DEL CAMBIO SOLICITADO ---
                     AnimatedVisibility(visible = errorMessage != null) {
                         errorMessage?.let { msg ->
                             Spacer(Modifier.height(16.dp))
@@ -597,22 +560,18 @@ fun LoginFormContent(
                             ) {
                                 val displayMessage: String
                                 val displayIcon = if (isNetworkError) {
-                                    // Mensaje específico para cuando falla la conexión de red
                                     displayMessage = "Por favor, conéctate a una red Wi-Fi o verifica tu conexión a Internet."
                                     Icons.Default.WifiOff
                                 } else {
-                                    // Mensaje genérico para errores de credenciales
                                     displayMessage = msg
                                     Icons.Default.Lock
                                 }
-
                                 Icon(displayIcon, null, tint = Color.Red, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Text(text = displayMessage, color = Color.Red, fontSize = 12.sp)
                             }
                         }
                     }
-                    // --- FIN DEL CAMBIO SOLICITADO ---
                 }
             }
             Spacer(Modifier.weight(1f))
@@ -621,6 +580,7 @@ fun LoginFormContent(
         }
     }
 }
+
 @Composable
 fun LoginTextFieldLabel(text: String) {
     Text(
@@ -634,10 +594,6 @@ fun LoginTextFieldLabel(text: String) {
     )
 }
 
-/**
- * Extension function para encontrar la Activity desde un Context
- * Esto es necesario porque Compose envuelve el contexto en ContextWrapper
- */
 fun Context.findActivity(): Activity? {
     var context = this
     while (context is ContextWrapper) {

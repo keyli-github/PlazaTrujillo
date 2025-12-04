@@ -1,9 +1,12 @@
 package com.keyli.plazatrujillo.ui.screens
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -31,6 +35,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
 import com.keyli.plazatrujillo.ui.theme.*
 import com.keyli.plazatrujillo.ui.viewmodel.Contact
 import com.keyli.plazatrujillo.ui.viewmodel.DisplayMessage
@@ -39,6 +45,80 @@ import com.keyli.plazatrujillo.ui.viewmodel.AttachmentState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
+
+/**
+ * Decodifica una URL Base64 (data:image/...) a Bitmap
+ */
+private fun base64ToBitmapMsg(base64Url: String): Bitmap? {
+    return try {
+        val base64Data = if (base64Url.contains(",")) {
+            base64Url.substringAfter(",")
+        } else {
+            base64Url
+        }
+        val bytes = Base64.decode(base64Data, Base64.DEFAULT)
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
+
+/**
+ * Composable para mostrar imagen que puede ser URL normal o Base64
+ */
+@Composable
+private fun SmartImage(
+    imageUrl: String,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    contentScale: ContentScale = ContentScale.Crop,
+    onClick: (() -> Unit)? = null
+) {
+    val context = LocalContext.current
+    
+    if (imageUrl.startsWith("data:")) {
+        // Es Base64, decodificar manualmente
+        val bitmap = remember(imageUrl) { base64ToBitmapMsg(imageUrl) }
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = contentDescription,
+                contentScale = contentScale,
+                modifier = modifier.then(
+                    if (onClick != null) Modifier.clickable { onClick() } else Modifier
+                )
+            )
+        } else {
+            // Fallback si falla la decodificación
+            Box(
+                modifier = modifier.background(Color.Gray.copy(alpha = 0.3f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.BrokenImage,
+                    contentDescription = "Error al cargar imagen",
+                    tint = Color.Gray
+                )
+            }
+        }
+    } else {
+        // Es URL normal, usar Coil
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(imageUrl)
+                .diskCachePolicy(CachePolicy.ENABLED)
+                .memoryCachePolicy(CachePolicy.ENABLED)
+                .crossfade(true)
+                .build(),
+            contentDescription = contentDescription,
+            contentScale = contentScale,
+            modifier = modifier.then(
+                if (onClick != null) Modifier.clickable { onClick() } else Modifier
+            )
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -211,8 +291,8 @@ fun ContactItem(
         // Avatar con indicador Online
         Box {
             if (!contact.photo.isNullOrEmpty()) {
-                AsyncImage(
-                    model = contact.photo,
+                SmartImage(
+                    imageUrl = contact.photo,
                     contentDescription = contact.name,
                     modifier = Modifier
                         .size(56.dp)
@@ -404,8 +484,8 @@ fun ConversationScreen(
                     .clickable { showImagePreview = null },
                 contentAlignment = Alignment.Center
             ) {
-                AsyncImage(
-                    model = imageUrl,
+                SmartImage(
+                    imageUrl = imageUrl,
                     contentDescription = "Imagen ampliada",
                     modifier = Modifier
                         .fillMaxWidth()
@@ -433,8 +513,8 @@ fun ConversationScreen(
 
                     // Avatar
                     if (!contact.photo.isNullOrEmpty()) {
-                        AsyncImage(
-                            model = contact.photo,
+                        SmartImage(
+                            imageUrl = contact.photo,
                             contentDescription = contact.name,
                             modifier = Modifier
                                 .size(40.dp)
@@ -695,8 +775,8 @@ fun MessageBubble(message: DisplayMessage, onImageClick: ((String) -> Unit)? = n
             Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                 // Mostrar imagen si es tipo imagen
                 if (message.messageType == "image" && !message.attachment.isNullOrEmpty()) {
-                    AsyncImage(
-                        model = message.attachment,
+                    SmartImage(
+                        imageUrl = message.attachment,
                         contentDescription = "Imagen",
                         modifier = Modifier
                             .fillMaxWidth()

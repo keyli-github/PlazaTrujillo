@@ -32,12 +32,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
+import coil.request.CachePolicy
+import coil.request.ImageRequest
 import com.keyli.plazatrujillo.ui.theme.OrangePrimary
 import com.keyli.plazatrujillo.ui.viewmodel.UserViewModel
 import com.keyli.plazatrujillo.data.model.UpdateProfileRequest
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
+import androidx.compose.ui.graphics.asImageBitmap
 
 /**
  * Convierte una URI de imagen a Base64 (Data URL)
@@ -65,6 +69,25 @@ fun uriToBase64(context: android.content.Context, uri: Uri): String? {
         val bytes = outputStream.toByteArray()
         
         "data:image/jpeg;base64," + Base64.encodeToString(bytes, Base64.NO_WRAP)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
+
+/**
+ * Decodifica una URL Base64 (data:image/...) a Bitmap
+ */
+fun base64ToBitmap(base64Url: String): Bitmap? {
+    return try {
+        // Extraer solo la parte Base64 (quitar "data:image/jpeg;base64,")
+        val base64Data = if (base64Url.contains(",")) {
+            base64Url.substringAfter(",")
+        } else {
+            base64Url
+        }
+        val bytes = Base64.decode(base64Data, Base64.DEFAULT)
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
     } catch (e: Exception) {
         e.printStackTrace()
         null
@@ -132,6 +155,8 @@ fun ProfileScreen(navController: NavController) {
         uiState.successMessage?.let { message ->
             snackbarHostState.showSnackbar(message)
             userViewModel.clearMessages()
+            // Recargar perfil para obtener la URL actualizada de la foto
+            userViewModel.loadOwnProfile()
         }
     }
     
@@ -214,12 +239,41 @@ fun ProfileScreen(navController: NavController) {
                             }
                             // Si hay foto actual en el perfil y no se marcó para eliminar
                             !currentPhotoUrl.isNullOrEmpty() && !deletePhoto -> {
-                                Image(
-                                    painter = rememberAsyncImagePainter(currentPhotoUrl),
-                                    contentDescription = "Foto de perfil",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize().clip(CircleShape)
-                                )
+                                // Verificar si es Base64 o URL normal
+                                if (currentPhotoUrl.startsWith("data:")) {
+                                    // Es Base64, decodificar manualmente
+                                    val bitmap = remember(currentPhotoUrl) { 
+                                        base64ToBitmap(currentPhotoUrl) 
+                                    }
+                                    if (bitmap != null) {
+                                        Image(
+                                            bitmap = bitmap.asImageBitmap(),
+                                            contentDescription = "Foto de perfil",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize().clip(CircleShape)
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = null,
+                                            tint = OrangePrimary,
+                                            modifier = Modifier.size(40.dp)
+                                        )
+                                    }
+                                } else {
+                                    // Es URL normal, usar Coil
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(context)
+                                            .data(currentPhotoUrl)
+                                            .diskCachePolicy(CachePolicy.DISABLED)
+                                            .memoryCachePolicy(CachePolicy.DISABLED)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "Foto de perfil",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize().clip(CircleShape)
+                                    )
+                                }
                             }
                             // Sin foto
                             else -> {
