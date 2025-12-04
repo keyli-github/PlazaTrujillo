@@ -1,6 +1,9 @@
 package com.keyli.plazatrujillo.ui.screens
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -22,18 +25,67 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.keyli.plazatrujillo.ui.theme.OrangePrimary
+import com.keyli.plazatrujillo.ui.viewmodel.UserViewModel
+import com.keyli.plazatrujillo.data.model.UpdateProfileRequest
 import kotlinx.coroutines.launch
+import java.io.ByteArrayOutputStream
+
+/**
+ * Convierte una URI de imagen a Base64 (Data URL)
+ */
+fun uriToBase64(context: android.content.Context, uri: Uri): String? {
+    return try {
+        val inputStream = context.contentResolver.openInputStream(uri)
+        val bitmap = BitmapFactory.decodeStream(inputStream)
+        inputStream?.close()
+        
+        // Redimensionar si es muy grande (máximo 800px)
+        val maxSize = 800
+        val scaledBitmap = if (bitmap.width > maxSize || bitmap.height > maxSize) {
+            val ratio = minOf(maxSize.toFloat() / bitmap.width, maxSize.toFloat() / bitmap.height)
+            Bitmap.createScaledBitmap(
+                bitmap,
+                (bitmap.width * ratio).toInt(),
+                (bitmap.height * ratio).toInt(),
+                true
+            )
+        } else bitmap
+        
+        val outputStream = ByteArrayOutputStream()
+        scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+        val bytes = outputStream.toByteArray()
+        
+        "data:image/jpeg;base64," + Base64.encodeToString(bytes, Base64.NO_WRAP)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(navController: NavController) {
+    // --- CONTEXTO ---
+    val context = LocalContext.current
+    
+    // --- VIEWMODEL ---
+    val userViewModel: UserViewModel = viewModel()
+    val uiState by userViewModel.uiState.collectAsState()
+    
+    // Cargar perfil al iniciar
+    LaunchedEffect(Unit) {
+        userViewModel.loadOwnProfile()
+    }
+    
     // --- COLORES DINÁMICOS ---
     val bgColor = MaterialTheme.colorScheme.background
     val surfaceColor = MaterialTheme.colorScheme.surface
@@ -44,13 +96,16 @@ fun ProfileScreen(navController: NavController) {
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    // --- DATOS DEL PERFIL ---
-    // 'nombre' es mutable porque SE PUEDE EDITAR
-    var nombre by remember { mutableStateOf("Marco Antonio Castro Pared") }
-
-    // El resto son datos fijos (o vendrían de la BD)
-    val email = "mcastro@gmail.com"
-    val rol = "Administrador"
+    // --- DATOS DEL PERFIL desde API ---
+    val profile = uiState.currentProfile
+    var nombre by remember(profile) { mutableStateOf(profile?.displayName ?: "") }
+    val email = profile?.email ?: "Cargando..."
+    val rol = when (profile?.role?.lowercase()) {
+        "admin" -> "Administrador"
+        "receptionist" -> "Recepcionista"
+        "housekeeping" -> "Hotelero"
+        else -> profile?.role ?: "Cargando..."
+    }
     val estado = "En línea"
 
     // Datos del Hotel (Fijos)
@@ -62,6 +117,30 @@ fun ProfileScreen(navController: NavController) {
 
     // --- ESTADO FOTO DE PERFIL ---
     var profileImageUri by remember { mutableStateOf<Uri?>(null) }
+    var deletePhoto by remember { mutableStateOf(false) }
+    
+    // URL de la foto actual del perfil (de la API)
+    val currentPhotoUrl = profile?.profilePhotoUrl
+    
+    // Actualizar nombre cuando cambie el perfil
+    LaunchedEffect(profile?.displayName) {
+        profile?.displayName?.let { nombre = it }
+    }
+    
+    // Mostrar mensajes de éxito/error
+    LaunchedEffect(uiState.successMessage) {
+        uiState.successMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            userViewModel.clearMessages()
+        }
+    }
+    
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
+            snackbarHostState.showSnackbar(error)
+            userViewModel.clearMessages()
+        }
+    }
 
     // --- LAUNCHER ---
     val imagePickerLauncher = rememberLauncherForActivityResult(
@@ -123,37 +202,66 @@ fun ProfileScreen(navController: NavController) {
                             .background(OrangePrimary.copy(alpha = 0.2f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (profileImageUri != null) {
-                            Image(
-                                painter = rememberAsyncImagePainter(profileImageUri),
-                                contentDescription = "Foto de perfil",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize().clip(CircleShape)
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                tint = OrangePrimary,
-                                modifier = Modifier.size(40.dp)
-                            )
+                        when {
+                            // Si se seleccionó una nueva imagen local
+                            profileImageUri != null -> {
+                                Image(
+                                    painter = rememberAsyncImagePainter(profileImageUri),
+                                    contentDescription = "Foto de perfil",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape)
+                                )
+                            }
+                            // Si hay foto actual en el perfil y no se marcó para eliminar
+                            !currentPhotoUrl.isNullOrEmpty() && !deletePhoto -> {
+                                Image(
+                                    painter = rememberAsyncImagePainter(currentPhotoUrl),
+                                    contentDescription = "Foto de perfil",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape)
+                                )
+                            }
+                            // Sin foto
+                            else -> {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = OrangePrimary,
+                                    modifier = Modifier.size(40.dp)
+                                )
+                            }
                         }
                     }
 
                     // Botón para cambiar foto
-                    TextButton(onClick = {
-                        if (profileImageUri == null) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        TextButton(onClick = {
                             imagePickerLauncher.launch("image/*")
-                        } else {
-                            profileImageUri = null
-                            coroutineScope.launch { snackbarHostState.showSnackbar("Foto eliminada.") }
+                            deletePhoto = false
+                        }) {
+                            Text(
+                                "Cambiar Foto",
+                                color = OrangePrimary,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
-                    }) {
-                        Text(
-                            if (profileImageUri != null) "Quitar Foto" else "Cambiar Foto",
-                            color = OrangePrimary,
-                            fontWeight = FontWeight.Bold
-                        )
+                        
+                        // Mostrar botón quitar solo si hay foto
+                        if (profileImageUri != null || (!currentPhotoUrl.isNullOrEmpty() && !deletePhoto)) {
+                            TextButton(onClick = {
+                                profileImageUri = null
+                                deletePhoto = true
+                                coroutineScope.launch { snackbarHostState.showSnackbar("Foto marcada para eliminar.") }
+                            }) {
+                                Text(
+                                    "Quitar Foto",
+                                    color = Color.Red,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
                     }
 
                     Text("Mi Perfil", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = textColor)
@@ -203,17 +311,39 @@ fun ProfileScreen(navController: NavController) {
             // --- BOTÓN GUARDAR ---
             Button(
                 onClick = {
-                    coroutineScope.launch {
-                        snackbarHostState.showSnackbar("✅ Datos actualizados correctamente.", withDismissAction = true)
+                    // Determinar qué enviar para la foto
+                    val photoToSend: String? = when {
+                        deletePhoto -> "" // Enviar cadena vacía para eliminar
+                        profileImageUri != null -> uriToBase64(context, profileImageUri!!) // Nueva foto en Base64
+                        else -> null // No cambiar la foto
                     }
+                    
+                    val request = UpdateProfileRequest(
+                        displayName = nombre,
+                        profilePhotoUrl = photoToSend
+                    )
+                    userViewModel.updateOwnProfile(request)
+                    
+                    // Resetear estados locales después de guardar
+                    profileImageUri = null
+                    deletePhoto = false
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
                 modifier = Modifier.fillMaxWidth().height(50.dp),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                enabled = !uiState.isLoading
             ) {
-                Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("GUARDAR CAMBIOS", fontWeight = FontWeight.Bold, color = Color.White)
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("GUARDAR CAMBIOS", fontWeight = FontWeight.Bold, color = Color.White)
+                }
             }
 
             Spacer(modifier = Modifier.height(20.dp))

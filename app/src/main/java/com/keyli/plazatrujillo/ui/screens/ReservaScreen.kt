@@ -41,6 +41,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import com.keyli.plazatrujillo.data.model.CalendarEvent
+import com.keyli.plazatrujillo.data.UserSession
 
 // --- DATA CLASSES ---
 data class RoomItem(
@@ -107,17 +108,19 @@ fun ReservaScreen(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )
-            Button(
-                onClick = { navController.navigate("new_reservation") },
-                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-                shape = RoundedCornerShape(8.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                modifier = Modifier.height(36.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = null,
-                    tint = Color.White,
+            // Solo mostrar botón si el usuario puede editar reservas
+            if (UserSession.canEditReservas()) {
+                Button(
+                    onClick = { navController.navigate("new_reservation") },
+                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        tint = Color.White,
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
@@ -127,6 +130,7 @@ fun ReservaScreen(
                     color = Color.White,
                     fontWeight = FontWeight.Bold
                 )
+                }
             }
         }
 

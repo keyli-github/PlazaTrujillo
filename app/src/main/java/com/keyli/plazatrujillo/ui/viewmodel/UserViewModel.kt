@@ -212,6 +212,10 @@ class UserViewModel(
         _uiState.value = _uiState.value.copy(successMessage = null)
     }
     
+    fun clearMessages() {
+        _uiState.value = _uiState.value.copy(error = null, successMessage = null)
+    }
+    
     fun clearCreationSuccess() {
         _uiState.value = _uiState.value.copy(creationSuccess = null)
     }

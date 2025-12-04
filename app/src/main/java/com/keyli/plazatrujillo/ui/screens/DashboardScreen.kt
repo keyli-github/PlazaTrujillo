@@ -37,6 +37,8 @@ import androidx.navigation.NavController
 import com.keyli.plazatrujillo.ui.theme.*
 import com.keyli.plazatrujillo.ui.viewmodel.DashboardViewModel
 import com.keyli.plazatrujillo.data.model.*
+import com.keyli.plazatrujillo.data.UserRole
+import com.keyli.plazatrujillo.data.UserSession
 import java.text.DecimalFormat
 
 // --- COLORES ESPECÍFICOS ---
@@ -79,6 +81,18 @@ fun DashboardScreen(
     // Estados para los menús
     var showProfileMenu by remember { mutableStateOf(false) }
     var showNotifications by remember { mutableStateOf(false) }
+    
+    // Datos del usuario desde UserSession
+    val currentUserRole by UserSession.userRole.collectAsState()
+    val currentUserName by UserSession.userName.collectAsState()
+    val currentUserEmail by UserSession.userEmail.collectAsState()
+    
+    // Obtener nombre del rol para mostrar
+    val roleName = when (currentUserRole) {
+        UserRole.ADMIN -> "Administrador"
+        UserRole.RECEPTIONIST -> "Recepcionista"
+        UserRole.HOUSEKEEPING -> "Hotelero"
+    }
 
     val backgroundColor = MaterialTheme.colorScheme.background
     val textColor = MaterialTheme.colorScheme.onBackground
@@ -225,13 +239,17 @@ fun DashboardScreen(
                     MaterialTheme(shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(12.dp))) {
                         DropdownMenu(expanded = true, onDismissRequest = { showProfileMenu = false }, modifier = Modifier.background(menuBgColor).width(240.dp)) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Administrador", fontSize = 12.sp, color = Color.Gray)
-                                Text("mcastro@gmail.com", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = textColor)
+                                Text(roleName, fontSize = 12.sp, color = Color.Gray)
+                                Text(currentUserEmail ?: "Sin correo", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = textColor)
                             }
                             HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
                             DropdownMenuItem(text = { Text("Editar Perfil", color = textColor) }, leadingIcon = { Icon(Icons.Default.Edit, null, tint = textColor) }, onClick = { showProfileMenu = false; navController.navigate("profile") })
                             HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
-                            DropdownMenuItem(text = { Text("Cerrar Sesión", color = StatusRed, fontWeight = FontWeight.Bold) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, null, tint = StatusRed) }, onClick = { showProfileMenu = false; navController.navigate("login") { popUpTo(0) } })
+                            DropdownMenuItem(text = { Text("Cerrar Sesión", color = StatusRed, fontWeight = FontWeight.Bold) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, null, tint = StatusRed) }, onClick = { 
+                                showProfileMenu = false
+                                com.keyli.plazatrujillo.data.UserSession.clear()
+                                navController.navigate("login") { popUpTo(0) } 
+                            })
                         }
                     }
                 }
@@ -593,8 +611,12 @@ fun DashboardHeader(
     subTextColor: Color,
     onProfileClick: () -> Unit,
     onNotificationClick: () -> Unit,
-    showActions: Boolean // nuevo parámetro
+    showActions: Boolean, // nuevo parámetro
+    userName: String? = null // nombre del usuario
 ) {
+    // Obtener nombre del usuario de UserSession si no se pasa
+    val displayName = userName ?: UserSession.userName.collectAsState().value ?: "Usuario"
+    
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -602,7 +624,7 @@ fun DashboardHeader(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Hola, Marco",
+                text = "Hola, $displayName",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = textColor

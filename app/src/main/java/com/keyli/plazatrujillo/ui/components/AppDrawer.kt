@@ -4,11 +4,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.keyli.plazatrujillo.data.UserRole
+import com.keyli.plazatrujillo.data.UserSession
 import com.keyli.plazatrujillo.ui.navigation.drawerOptions
 import com.keyli.plazatrujillo.ui.theme.OrangePrimary
 
@@ -20,6 +24,9 @@ fun AppDrawer(
     val backgroundColor = MaterialTheme.colorScheme.surface
     val contentColor = MaterialTheme.colorScheme.onSurface
     val selectedBgColor = OrangePrimary.copy(alpha = 0.15f)
+    
+    // Obtener el rol del usuario
+    val userRole by UserSession.userRole.collectAsState()
 
     ModalDrawerSheet(
         drawerContainerColor = backgroundColor,
@@ -37,8 +44,19 @@ fun AppDrawer(
             modifier = Modifier.padding(start = 24.dp, bottom = 16.dp)
         )
 
-        drawerOptions.forEach { item ->
-            val isSelected = currentRoute == item.route
+        // Filtrar opciones según el rol del usuario
+        val filteredOptions = drawerOptions.filter { item ->
+            item.allowedRoles == null || userRole in item.allowedRoles
+        }
+
+        filteredOptions.forEach { item ->
+            // Para housekeeping, el dashboard va a dashboard_housekeeping
+            val actualRoute = if (item.route == "dashboard" && userRole == UserRole.HOUSEKEEPING) {
+                "dashboard_housekeeping"
+            } else {
+                item.route
+            }
+            val isSelected = currentRoute == item.route || currentRoute == actualRoute
 
             NavigationDrawerItem(
                 label = {
@@ -57,7 +75,7 @@ fun AppDrawer(
                 selected = isSelected,
                 onClick = {
                     // Solo emitimos la navegación; el cierre lo hace NavigationWrapper
-                    onNavigate(item.route)
+                    onNavigate(actualRoute)
                 },
                 colors = NavigationDrawerItemDefaults.colors(
                     selectedContainerColor = selectedBgColor,
@@ -99,7 +117,15 @@ fun AppDrawer(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
-                    onClick = { onNavigate("dashboard") },
+                    onClick = { 
+                        // Redirigir al dashboard según el rol
+                        val destination = if (userRole == UserRole.HOUSEKEEPING) {
+                            "dashboard_housekeeping"
+                        } else {
+                            "dashboard"
+                        }
+                        onNavigate(destination) 
+                    },
                     colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
                     modifier = Modifier.fillMaxWidth()
                 ) {

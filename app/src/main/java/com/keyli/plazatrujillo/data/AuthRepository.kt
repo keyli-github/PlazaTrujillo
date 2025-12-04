@@ -13,10 +13,13 @@ class AuthRepository(
     // Login
     suspend fun loginWithFirebase(email: String, password: String): Result<String> {
         return try {
-            val user = firebaseAuth.signInWithEmailAndPassword(email, password).await()
-            val token = user.user?.getIdToken(true)?.await()?.token
+            val authResult = firebaseAuth.signInWithEmailAndPassword(email, password).await()
+            val firebaseUser = authResult.user
+            val token = firebaseUser?.getIdToken(true)?.await()?.token
 
-            if (token != null) {
+            if (token != null && firebaseUser != null) {
+                // Inicializar UserSession con el usuario autenticado
+                UserSession.initialize(firebaseUser)
                 Result.success(token)
             } else {
                 Result.failure(Exception("Error desconocido: No se pudo obtener el token."))

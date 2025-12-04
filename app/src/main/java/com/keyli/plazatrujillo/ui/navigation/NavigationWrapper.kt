@@ -16,6 +16,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.*
 import kotlinx.coroutines.launch
 import com.keyli.plazatrujillo.R
+import com.keyli.plazatrujillo.data.UserRole
+import com.keyli.plazatrujillo.data.UserSession
 import com.keyli.plazatrujillo.ui.components.AppDrawer
 import com.keyli.plazatrujillo.ui.screens.*
 
@@ -31,12 +33,15 @@ fun NavigationWrapper(
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: "login"
+    
+    // Obtener el rol del usuario
+    val userRole by UserSession.userRole.collectAsState()
 
     // 1. AGREGA "recovery" AQUI PARA QUE NO SALGA EL MENÚ
     val fullScreenRoutes = listOf(
         "login", "recovery", "new_reservation", "new_reservation_screen", "new_movement",
         "new_comanda", "new_usuario", "edit_usuario", "register_briquetas", "bloq_habitacion",
-        "report_incidencias", "profile",
+        "report_incidencias", "profile", "webview",
     )
 
     val showBars = fullScreenRoutes.none { currentRoute.startsWith(it) }
@@ -62,7 +67,14 @@ fun NavigationWrapper(
                 LoginScreen(
                     onLoginSuccess = {
                         scope.launch { drawerState.snapTo(DrawerValue.Closed) }
-                        navController.navigate("dashboard") {
+                        // Redirigir según el rol del usuario - leer directamente del StateFlow
+                        val currentRole = UserSession.userRole.value
+                        val destination = if (currentRole == UserRole.HOUSEKEEPING) {
+                            "dashboard_housekeeping"
+                        } else {
+                            "dashboard"
+                        }
+                        navController.navigate(destination) {
                             popUpTo("login") { inclusive = true }
                         }
                     },
@@ -82,10 +94,22 @@ fun NavigationWrapper(
                 )
             }
 
-            // --- DASHBOARD ---
+            // --- DASHBOARD ADMIN/RECEPTIONIST ---
             composable("dashboard") {
                 // Paso el flag dashboardShowActions para que el Dashboard oculte/muestre sus iconos
                 DashboardScreen(navController, isDarkTheme, onToggleTheme, showHeaderActions = dashboardShowActions)
+            }
+            
+            // --- DASHBOARD HOUSEKEEPING (SIMPLIFICADO) ---
+            composable("dashboard_housekeeping") {
+                DashboardHousekeepingScreen(
+                    navController = navController,
+                    isDarkTheme = isDarkTheme,
+                    onToggleTheme = onToggleTheme,
+                    onNavigateToMantenimiento = {
+                        navController.navigate("mantenimiento")
+                    }
+                )
             }
 
             // --- RESTO DE PANTALLAS ---
@@ -107,6 +131,7 @@ fun NavigationWrapper(
             composable("report_incidencias") { ReportIncidenciasScreen(navController) }
             composable("mensajes") { MensajeScreen(navController) }
             composable("chatbot") { ChatBotScreen(navController) }
+            composable("webview") { WebViewScreen(navController) }
         }
     }
 
